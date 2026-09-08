@@ -6,13 +6,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 /**
- * Phase 1 placeholder repository implementation.
+ * Phase 1/2 placeholder repository implementation.
  *
  * NOTE:
- * - Real backend synchronization, push notification ingestion, and Room persistence
- *   will be introduced in subsequent phases.
- * - In Phase 1, empty collections are safely emitted so empty states are verified
- *   without fabricating mock data.
+ * - Empty collections are safely emitted so empty states are verified without fabricating mock data.
+ * - Phase 3 will introduce mock alerts and sample triggers.
+ * - Later phases will connect Room persistence and remote REST/FCM synchronization.
  */
 class AlertRepositoryImpl : AlertRepository {
 
@@ -28,11 +27,13 @@ class AlertRepositoryImpl : AlertRepository {
         return flowOf(null)
     }
 
-    override suspend fun acknowledgeAlert(alertId: String) {
+    override suspend fun acknowledgeAlert(alertId: String): Result<Unit> {
         // Operational sync to backend will be implemented in subsequent phases.
+        return Result.success(Unit)
     }
 
-    override suspend fun silenceAlert(alertId: String) {
+    override suspend fun silenceAlert(alertId: String): Result<Unit> {
         // Local audio/vibrator suppression will be implemented in notification phase.
+        return Result.success(Unit)
     }
 }

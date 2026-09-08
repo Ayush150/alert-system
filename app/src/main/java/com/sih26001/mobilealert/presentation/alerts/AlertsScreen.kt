@@ -92,14 +92,14 @@ fun AlertsScreen(
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text(
-                                        text = alert.title,
+                                        text = "${alert.severity} • ${alert.eventType}",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
-                                    alert.description?.let { desc ->
+                                    alert.recommendedAction?.let { action ->
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = desc,
+                                            text = action,
                                             style = MaterialTheme.typography.bodyMedium
                                         )
                                     }

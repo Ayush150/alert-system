@@ -4,33 +4,36 @@ import com.sih26001.mobilealert.domain.model.Alert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Domain repository contract for managing alerts.
- * Concrete implementations reside in the data layer.
+ * Domain repository abstraction for accessing and modifying alert state.
+ *
+ * Designed to support future implementations (Mock, Room, REST, FCM-triggered)
+ * without altering domain or UI layer consumers.
  */
 interface AlertRepository {
     /**
-     * Observes currently active alerts that require user attention.
+     * Emits a reactive stream of currently active alerts requiring user attention.
      */
     fun getActiveAlerts(): Flow<List<Alert>>
 
     /**
-     * Observes the historical record of alerts (acknowledged, expired, past).
+     * Emits a reactive stream of past, acknowledged, or expired alerts.
      */
     fun getAlertHistory(): Flow<List<Alert>>
 
     /**
-     * Observes an individual alert by its unique alert_id.
+     * Observes an individual alert by its unique [alertId].
      */
     fun getAlertById(alertId: String): Flow<Alert?>
 
     /**
-     * Acknowledges an alert. This is an operational event that must eventually sync to backend.
+     * Marks an alert as acknowledged.
+     * This is an operational confirmation that must eventually sync to the backend.
      */
-    suspend fun acknowledgeAlert(alertId: String)
+    suspend fun acknowledgeAlert(alertId: String): Result<Unit>
 
     /**
-     * Silences local audible/tactile warnings for the given alert.
-     * Note: Silencing is a local UX action and does NOT mark the alert as acknowledged.
+     * Suppresses local audible or vibration alarms for an active alert.
+     * NOTE: Silencing is a local UX action and does NOT acknowledge the alert.
      */
-    suspend fun silenceAlert(alertId: String)
+    suspend fun silenceAlert(alertId: String): Result<Unit>
 }

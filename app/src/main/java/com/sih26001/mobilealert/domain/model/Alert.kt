@@ -1,50 +1,32 @@
 package com.sih26001.mobilealert.domain.model
 
-/**
- * Documented alert lifecycle states according to the SIH26001 specification:
- * - RECEIVED: Payload received on device.
- * - DISPLAYED: Rendered in user interface / notification.
- * - ACTIVE: Currently ongoing and unacknowledged/unsilenced.
- * - SILENCED: Local audio/vibration suppressed by user (local UX action, not acknowledged).
- * - ACKNOWLEDGED: Operational acknowledgement confirmed and dispatched to backend.
- * - EXPIRED: Time-to-live expired; preserved in history and no longer active.
- */
-enum class AlertState {
-    RECEIVED,
-    DISPLAYED,
-    ACTIVE,
-    SILENCED,
-    ACKNOWLEDGED,
-    EXPIRED
-}
+import java.time.Instant
 
 /**
- * Alert severity levels mapped to system notification channels:
- * NORMAL, HIGH, CRITICAL.
- */
-enum class AlertSeverity {
-    NORMAL,
-    HIGH,
-    CRITICAL
-}
-
-/**
- * SIH26001 Domain Alert Model.
+ * Stable SIH26001 Alert Domain Model.
  *
- * NOTE:
- * - The mobile client NEVER calculates risk scores, environmental features, or ML predictions.
- * - Missing or unavailable backend values are preserved as null and never fabricated.
- * - [alertId] serves as the unique identifier for deduplication and backend operations.
+ * CONTRACT RULES:
+ * 1. The mobile client NEVER calculates risk scores, environmental features, or ML predictions.
+ *    Risk calculation is performed exclusively by the upstream Risk Engine.
+ * 2. Missing data is preserved as null and never replaced with 0 or default fallbacks.
+ * 3. [alertId] serves as the unique identifier for deduplication and backend lifecycle events.
+ * 4. [status] tracks the lifecycle state, strictly distinguishing SILENCED from ACKNOWLEDGED.
  */
 data class Alert(
     val alertId: String,
-    val title: String,
-    val description: String? = null,
+    val eventType: String,
     val severity: AlertSeverity,
-    val state: AlertState,
-    val locationName: String? = null,
-    val issuedAt: Long,
-    val receivedAt: Long? = null,
-    val acknowledgedAt: Long? = null,
-    val expiresAt: Long? = null
+    val riskScore: Double? = null,
+    val location: Location? = null,
+    val issuedAt: Instant,
+    val expiresAt: Instant? = null,
+    val topDrivers: List<String>? = null,
+    val recommendedAction: String? = null,
+    val affectedAssets: List<AffectedAsset>? = null,
+    val source: String? = null,
+    val dataQuality: String? = null,
+    val requiresAck: Boolean = false,
+    val status: AlertStatus = AlertStatus.ACTIVE,
+    val receivedAt: Instant? = null,
+    val acknowledgedAt: Instant? = null
 )
