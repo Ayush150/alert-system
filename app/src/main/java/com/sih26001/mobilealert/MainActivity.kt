@@ -1,16 +1,59 @@
 package com.sih26001.mobilealert
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.sih26001.mobilealert.core.alarm.AlarmControllerImpl
 import com.sih26001.mobilealert.core.navigation.AppNavigation
+import com.sih26001.mobilealert.core.notification.AlertNotificationManagerImpl
+import com.sih26001.mobilealert.core.notification.NotificationChannels
 import com.sih26001.mobilealert.core.ui.theme.SIH26001MobileAlertTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        // In a full app, we might update UI state to warn the user if denied.
+    }
+
+    private val mainViewModel: MainViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val notificationManager = AlertNotificationManagerImpl(this@MainActivity)
+                val alarmController = AlarmControllerImpl(this@MainActivity)
+                @Suppress("UNCHECKED_CAST")
+                return MainViewModel(notificationManager, alarmController) as T
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Create Notification Channels on app start
+        NotificationChannels.createChannels(this)
+
+        // Request POST_NOTIFICATIONS permission on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        // Initialize the global observer
+        mainViewModel // Accessing it causes it to initialize and start observing alerts
+
         setContent {
             SIH26001MobileAlertTheme {
                 AppNavigation()
