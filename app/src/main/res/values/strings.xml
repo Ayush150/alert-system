@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">SIH26001 Mobile Alert</string>
+    <string name="app_description">Early-warning emergency client designed to receive and display verified landslide alerts from the SIH26001 backend system.</string>
+    <string name="prototype_badge">Prototype Foundation (Phase 1)</string>
+    <string name="prototype_notice">Architecture skeleton and standby mode. Backend push and local persistence will be connected in subsequent phases.</string>
+    
+    <string name="nav_home">Home</string>
+    <string name="nav_alerts">Active Alerts</string>
+    <string name="nav_history">Alert History</string>
+    <string name="nav_back">Navigate back</string>
+
+    <string name="btn_view_alerts">View Active Alerts</string>
+    <string name="btn_view_history">View Alert History</string>
+
+    <string name="alerts_title">Active Alerts</string>
+    <string name="alerts_empty_title">No active alerts</string>
+    <string name="alerts_empty_subtitle">No active landslide warnings have been issued for your monitored zones.</string>
+
+    <string name="history_title">Alert History</string>
+    <string name="history_empty_title">No alert history</string>
+    <string name="history_empty_subtitle">Archived, expired, and acknowledged warnings will appear here.</string>
+
+    <string name="status_standby">System Status: Standby</string>
+</resources>
