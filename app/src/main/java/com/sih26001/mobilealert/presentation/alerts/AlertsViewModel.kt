@@ -2,7 +2,8 @@ package com.sih26001.mobilealert.presentation.alerts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sih26001.mobilealert.data.repository.AlertRepositoryImpl
+import com.sih26001.mobilealert.data.mock.MockAlertData
+import com.sih26001.mobilealert.di.DependencyContainer
 import com.sih26001.mobilealert.domain.model.Alert
 import com.sih26001.mobilealert.domain.usecase.GetActiveAlertsUseCase
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,8 +17,10 @@ data class AlertsUiState(
 )
 
 class AlertsViewModel(
-    getActiveAlertsUseCase: GetActiveAlertsUseCase = GetActiveAlertsUseCase(AlertRepositoryImpl())
+    getActiveAlertsUseCase: GetActiveAlertsUseCase = GetActiveAlertsUseCase(DependencyContainer.alertRepository)
 ) : ViewModel() {
+
+    private val mockRepository = DependencyContainer.mockAlertRepository
 
     val uiState: StateFlow<AlertsUiState> = getActiveAlertsUseCase()
         .map { alertList ->
@@ -28,4 +31,20 @@ class AlertsViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = AlertsUiState(isLoading = false, alerts = emptyList())
         )
+
+    fun triggerNormalAlert() {
+        mockRepository.triggerTestAlert(MockAlertData.normalAlert)
+    }
+
+    fun triggerHighAlert() {
+        mockRepository.triggerTestAlert(MockAlertData.highAlert)
+    }
+
+    fun triggerCriticalAlert() {
+        mockRepository.triggerTestAlert(MockAlertData.criticalAlert)
+    }
+
+    fun clearAllAlerts() {
+        mockRepository.clearAllAlerts()
+    }
 }
