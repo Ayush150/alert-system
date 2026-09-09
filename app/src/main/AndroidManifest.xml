@@ -2,11 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
+        android:name=".MobileAlertApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -21,6 +23,7 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.SIH26001MobileAlert"
             android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTop"
             android:showWhenLocked="true"
             android:turnScreenOn="true">
             <intent-filter>
@@ -36,6 +39,15 @@
                 <data android:scheme="sih26001" android:host="alert" />
             </intent-filter>
         </activity>
+
+        <!-- Firebase Cloud Messaging service -->
+        <service
+            android:name=".data.fcm.SihFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

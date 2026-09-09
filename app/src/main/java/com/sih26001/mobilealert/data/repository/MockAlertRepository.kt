@@ -65,6 +65,11 @@ class MockAlertRepository : AlertRepository {
         return Result.failure(Exception("Alert not found"))
     }
 
+    override suspend fun refreshAlerts(): Result<Unit> {
+        // Mock repository doesn't fetch from remote.
+        return Result.success(Unit)
+    }
+
     // --- Developer Controls ---
 
     /**

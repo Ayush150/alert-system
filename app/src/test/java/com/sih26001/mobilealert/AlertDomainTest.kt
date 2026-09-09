@@ -250,10 +250,22 @@ class AlertDomainTest {
         assertEquals(false, alert.requiresAck)
     }
 
-    // Repository empty flows in Phase 2
+    // Repository empty flows
     @Test
-    fun alertRepositoryImpl_returnsEmptyActiveAlertsInPhase2() = runBlocking {
-        val repository = AlertRepositoryImpl()
+    fun alertRepositoryImpl_returnsEmptyActiveAlertsInitially() = runBlocking {
+        val fakeApi = object : com.sih26001.mobilealert.data.remote.api.AlertApiService {
+            override suspend fun getAlerts() = emptyList<AlertDto>()
+        }
+        val fakeDao = object : com.sih26001.mobilealert.data.local.AlertDao {
+            override fun observeAllAlerts() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
+            override fun observeActiveAlerts(activeStatuses: List<String>) = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
+            override fun observeAlertById(id: String) = kotlinx.coroutines.flow.flowOf(null)
+            override fun insertAlerts(alerts: List<com.sih26001.mobilealert.data.local.AlertEntity>) {}
+            override fun insertAlert(alert: com.sih26001.mobilealert.data.local.AlertEntity) {}
+            override fun updateStatus(id: String, status: AlertStatus) {}
+            override fun updateAcknowledgedAt(id: String, timestamp: Instant) {}
+        }
+        val repository = AlertRepositoryImpl(fakeApi, fakeDao)
         val useCase = GetActiveAlertsUseCase(repository)
 
         val activeAlerts = useCase().first()
@@ -261,8 +273,20 @@ class AlertDomainTest {
     }
 
     @Test
-    fun alertRepositoryImpl_returnsEmptyAlertHistoryInPhase2() = runBlocking {
-        val repository = AlertRepositoryImpl()
+    fun alertRepositoryImpl_returnsEmptyAlertHistoryInitially() = runBlocking {
+        val fakeApi = object : com.sih26001.mobilealert.data.remote.api.AlertApiService {
+            override suspend fun getAlerts() = emptyList<AlertDto>()
+        }
+        val fakeDao = object : com.sih26001.mobilealert.data.local.AlertDao {
+            override fun observeAllAlerts() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
+            override fun observeActiveAlerts(activeStatuses: List<String>) = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
+            override fun observeAlertById(id: String) = kotlinx.coroutines.flow.flowOf(null)
+            override fun insertAlerts(alerts: List<com.sih26001.mobilealert.data.local.AlertEntity>) {}
+            override fun insertAlert(alert: com.sih26001.mobilealert.data.local.AlertEntity) {}
+            override fun updateStatus(id: String, status: AlertStatus) {}
+            override fun updateAcknowledgedAt(id: String, timestamp: Instant) {}
+        }
+        val repository = AlertRepositoryImpl(fakeApi, fakeDao)
         val useCase = GetAlertHistoryUseCase(repository)
 
         val historyAlerts = useCase().first()

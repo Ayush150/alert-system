@@ -31,16 +31,16 @@ class MainViewModelTest {
     private lateinit var notificationManager: AlertNotificationManager
     private lateinit var alarmController: AlarmController
     private lateinit var mainViewModel: MainViewModel
+    private lateinit var mockAlertRepository: com.sih26001.mobilealert.data.repository.MockAlertRepository
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         notificationManager = mock(AlertNotificationManager::class.java)
         alarmController = mock(AlarmController::class.java)
+        mockAlertRepository = com.sih26001.mobilealert.data.repository.MockAlertRepository()
         
-        DependencyContainer.mockAlertRepository.clearAllAlerts()
-        
-        mainViewModel = MainViewModel(notificationManager, alarmController)
+        mainViewModel = MainViewModel(notificationManager, alarmController, mockAlertRepository)
     }
 
     @After
@@ -52,7 +52,7 @@ class MainViewModelTest {
     fun `new critical alert triggers notification and alarm`() = runTest {
         val alert = MockAlertData.criticalAlert
         
-        DependencyContainer.mockAlertRepository.triggerTestAlert(alert)
+        mockAlertRepository.triggerTestAlert(alert)
         advanceUntilIdle()
 
         verify(notificationManager).showAlertNotification(alert)
@@ -63,11 +63,11 @@ class MainViewModelTest {
     fun `silencing an alert stops alarm but not notification`() = runTest {
         val alert = MockAlertData.criticalAlert
         
-        DependencyContainer.mockAlertRepository.triggerTestAlert(alert)
+        mockAlertRepository.triggerTestAlert(alert)
         advanceUntilIdle()
         
         // Silence it
-        DependencyContainer.mockAlertRepository.silenceAlert(alert.alertId)
+        mockAlertRepository.silenceAlert(alert.alertId)
         advanceUntilIdle()
 
         // It was triggered
@@ -82,11 +82,11 @@ class MainViewModelTest {
     fun `acknowledging an alert stops alarm and notification`() = runTest {
         val alert = MockAlertData.criticalAlert
         
-        DependencyContainer.mockAlertRepository.triggerTestAlert(alert)
+        mockAlertRepository.triggerTestAlert(alert)
         advanceUntilIdle()
         
         // Acknowledge it
-        DependencyContainer.mockAlertRepository.acknowledgeAlert(alert.alertId)
+        mockAlertRepository.acknowledgeAlert(alert.alertId)
         advanceUntilIdle()
 
         // It was removed from active alerts flow so it cancels notification

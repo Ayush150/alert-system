@@ -3,6 +3,7 @@ package com.sih26001.mobilealert.presentation.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sih26001.mobilealert.data.repository.AlertRepositoryImpl
+import com.sih26001.mobilealert.di.DependencyContainer
 import com.sih26001.mobilealert.domain.model.Alert
 import com.sih26001.mobilealert.domain.usecase.GetAlertHistoryUseCase
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,7 +17,7 @@ data class HistoryUiState(
 )
 
 class HistoryViewModel(
-    getAlertHistoryUseCase: GetAlertHistoryUseCase = GetAlertHistoryUseCase(AlertRepositoryImpl())
+    getAlertHistoryUseCase: GetAlertHistoryUseCase = GetAlertHistoryUseCase(DependencyContainer.alertRepository)
 ) : ViewModel() {
 
     val uiState: StateFlow<HistoryUiState> = getAlertHistoryUseCase()

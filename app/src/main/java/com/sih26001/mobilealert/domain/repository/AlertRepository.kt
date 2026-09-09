@@ -36,4 +36,9 @@ interface AlertRepository {
      * NOTE: Silencing is a local UX action and does NOT acknowledge the alert.
      */
     suspend fun silenceAlert(alertId: String): Result<Unit>
+
+    /**
+     * Triggers a manual network fetch of alerts from the remote source.
+     */
+    suspend fun refreshAlerts(): Result<Unit>
 }

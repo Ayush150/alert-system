@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.content.Intent
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -12,6 +14,7 @@ import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.google.firebase.messaging.FirebaseMessaging
 import com.sih26001.mobilealert.core.alarm.AlarmControllerImpl
 import com.sih26001.mobilealert.core.navigation.AppNavigation
 import com.sih26001.mobilealert.core.notification.AlertNotificationManagerImpl
@@ -19,6 +22,10 @@ import com.sih26001.mobilealert.core.notification.NotificationChannels
 import com.sih26001.mobilealert.core.ui.theme.SIH26001MobileAlertTheme
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        private const val TAG = "MainActivity"
+    }
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -51,13 +58,44 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Initialize the global observer
-        mainViewModel // Accessing it causes it to initialize and start observing alerts
+        // Explicitly evaluate ViewModel delegate to guarantee initialization and start observing alerts
+        mainViewModel.let { }
+
+        // Retrieve FCM token safely for development validation
+        retrieveFcmToken()
+
+        // Check if opened from an FCM notification / background payload containing alert_id
+        checkIntentForAlertId(intent)
 
         setContent {
             SIH26001MobileAlertTheme {
                 AppNavigation()
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        checkIntentForAlertId(intent)
+    }
+
+    private fun retrieveFcmToken() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w(TAG, "Fetching FCM registration token failed: ${task.exception?.message}")
+                return@addOnCompleteListener
+            }
+            val token = task.result
+            val preview = if (token != null && token.length > 8) "${token.take(4)}...${token.takeLast(4)}" else "***"
+            Log.i(TAG, "FCM token retrieved (length=${token?.length ?: 0}, preview=$preview)")
+        }
+    }
+
+    private fun checkIntentForAlertId(intent: Intent?) {
+        val alertId = intent?.extras?.getString("alert_id")?.trim()
+        if (!alertId.isNullOrEmpty()) {
+            Log.i(TAG, "FCM alert_id received from launch intent: $alertId")
         }
     }
 }

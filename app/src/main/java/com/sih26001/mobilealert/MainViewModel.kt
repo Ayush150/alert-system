@@ -8,17 +8,21 @@ import com.sih26001.mobilealert.di.DependencyContainer
 import com.sih26001.mobilealert.domain.model.AlertStatus
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 class MainViewModel(
     private val notificationManager: AlertNotificationManager,
-    private val alarmController: AlarmController
+    private val alarmController: AlarmController,
+    private val alertRepository: com.sih26001.mobilealert.domain.repository.AlertRepository = DependencyContainer.alertRepository
 ) : ViewModel() {
-
-    private val alertRepository = DependencyContainer.alertRepository
 
     private val activeAlertIds = mutableSetOf<String>()
 
     init {
+        viewModelScope.launch {
+            alertRepository.refreshAlerts()
+        }
+
         alertRepository.getActiveAlerts()
             .onEach { alerts ->
                 val currentIds = alerts.map { it.alertId }.toSet()
