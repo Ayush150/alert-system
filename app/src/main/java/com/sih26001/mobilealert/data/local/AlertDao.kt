@@ -20,6 +20,9 @@ interface AlertDao {
     @Query("SELECT * FROM alerts WHERE alertId = :id")
     fun observeAlertById(id: String): Flow<AlertEntity?>
 
+    @Query("SELECT * FROM alerts WHERE alertId = :id")
+    fun getAlertById(id: String): AlertEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAlerts(alerts: List<AlertEntity>)
     

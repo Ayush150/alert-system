@@ -2,6 +2,9 @@ package com.sih26001.mobilealert.di
 
 import com.sih26001.mobilealert.data.repository.MockAlertRepository
 import com.sih26001.mobilealert.domain.repository.AlertRepository
+import androidx.room.withTransaction
+import android.util.Log
+import kotlinx.coroutines.launch
 
 /**
  * A simple manual dependency injection container for Phase 3.
@@ -25,14 +28,89 @@ object DependencyContainer {
             appContext,
             com.sih26001.mobilealert.data.local.AppDatabase::class.java,
             "alerts.db"
-        ).build()
+        ).fallbackToDestructiveMigration().build()
+
+        // Start observing network changes
+        ackSyncCoordinator.startObserving()
+
+        // Trigger startup recovery and reconciliation
+        applicationScope.launch {
+            try {
+                Log.d("DependencyContainer", "Executing startup ACK recovery")
+                val recovered = ackSyncEngine.recoverInterruptedSyncs()
+                if (recovered > 0) {
+                    Log.i("DependencyContainer", "Recovered $recovered stale IN_FLIGHT records on startup.")
+                }
+                val processed = ackSyncEngine.reconcilePendingAcks()
+                if (processed > 0) {
+                    Log.i("DependencyContainer", "Reconciled $processed ACK records on startup.")
+                }
+            } catch (t: Throwable) {
+                Log.e("DependencyContainer", "Unexpected error during startup ACK recovery/sync", t)
+            }
+        }
+    }
+
+    val databaseTransactionRunner: com.sih26001.mobilealert.data.local.DatabaseTransactionRunner by lazy {
+        object : com.sih26001.mobilealert.data.local.DatabaseTransactionRunner {
+            override suspend fun <T> invoke(block: suspend () -> T): T {
+                return database.withTransaction {
+                    block()
+                }
+            }
+        }
     }
 
     // We use AlertRepositoryImpl for Phase 6 to connect to the local Mock REST API and Room.
     val alertRepository: AlertRepository by lazy {
         com.sih26001.mobilealert.data.repository.AlertRepositoryImpl(
-            alertApiService, 
-            database.alertDao()
+            apiService = alertApiService, 
+            alertDao = database.alertDao(),
+            pendingAckDao = database.pendingAckDao(),
+            transactionRunner = databaseTransactionRunner
+        )
+    }
+
+    val acknowledgeAlertUseCase: com.sih26001.mobilealert.domain.usecase.AcknowledgeAlertUseCase by lazy {
+        com.sih26001.mobilealert.domain.usecase.AcknowledgeAlertUseCase(alertRepository)
+    }
+
+    val pendingAckDao: com.sih26001.mobilealert.data.local.PendingAckDao by lazy {
+        database.pendingAckDao()
+    }
+
+    val networkConnectivityMonitor: com.sih26001.mobilealert.data.ack.NetworkConnectivityMonitor by lazy {
+        com.sih26001.mobilealert.data.ack.AndroidNetworkConnectivityMonitor(appContext)
+    }
+
+    val ackRetryPolicy: com.sih26001.mobilealert.data.ack.AckRetryPolicy by lazy {
+        com.sih26001.mobilealert.data.ack.ExponentialBackoffAckRetryPolicy()
+    }
+
+    val ackRecoveryPolicy: com.sih26001.mobilealert.data.ack.AckRecoveryPolicy by lazy {
+        com.sih26001.mobilealert.data.ack.DefaultAckRecoveryPolicy()
+    }
+
+    // Production transport MUST remain unavailable and MUST NEVER report fake success
+    val ackSyncDataSource: com.sih26001.mobilealert.data.ack.AckSyncDataSource by lazy {
+        com.sih26001.mobilealert.data.ack.UnavailableAckSyncDataSource()
+    }
+
+    val ackSyncEngine: com.sih26001.mobilealert.data.ack.AckSyncEngine by lazy {
+        com.sih26001.mobilealert.data.ack.AckSyncEngine(
+            pendingAckDao = pendingAckDao,
+            ackSyncDataSource = ackSyncDataSource,
+            ackRetryPolicy = ackRetryPolicy,
+            ackRecoveryPolicy = ackRecoveryPolicy,
+            connectivityMonitor = networkConnectivityMonitor
+        )
+    }
+
+    val ackSyncCoordinator: com.sih26001.mobilealert.data.ack.AckSyncCoordinator by lazy {
+        com.sih26001.mobilealert.data.ack.AckSyncCoordinator(
+            context = appContext,
+            engine = ackSyncEngine,
+            scope = applicationScope
         )
     }
 

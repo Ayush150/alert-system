@@ -23,6 +23,9 @@ fun ActiveAlarmScreen(
     modifier: Modifier = Modifier
 ) {
     val alert by viewModel.alert.collectAsState()
+    val isAckPending by viewModel.isAckPending.collectAsState()
+    val ackSyncStatus by viewModel.ackSyncStatus.collectAsState()
+    val ackError by viewModel.ackError.collectAsState()
 
     Scaffold(
         topBar = {
@@ -49,6 +52,9 @@ fun ActiveAlarmScreen(
             } else {
                 AlarmContent(
                     alert = alert!!,
+                    isAckPending = isAckPending,
+                    ackSyncStatus = ackSyncStatus,
+                    ackError = ackError,
                     onSilence = viewModel::silenceAlert,
                     onAcknowledge = viewModel::acknowledgeAlert
                 )
@@ -60,6 +66,9 @@ fun ActiveAlarmScreen(
 @Composable
 private fun AlarmContent(
     alert: Alert,
+    isAckPending: Boolean,
+    ackSyncStatus: com.sih26001.mobilealert.data.local.AckSyncStatus?,
+    ackError: String?,
     onSilence: () -> Unit,
     onAcknowledge: () -> Unit
 ) {
@@ -105,7 +114,20 @@ private fun AlarmContent(
         val locText = alert.location?.let { "${it.latitude}, ${it.longitude}" } ?: "Unknown"
         InfoRow("Location:", locText, contentColor)
 
-        InfoRow("Status:", alert.status.name, contentColor)
+        val statusDisplay = when {
+            ackSyncStatus == com.sih26001.mobilealert.data.local.AckSyncStatus.COMPLETED -> "ACKNOWLEDGED • SYNCED"
+            ackSyncStatus == com.sih26001.mobilealert.data.local.AckSyncStatus.FAILED -> "ACKNOWLEDGED • SYNC PENDING (RETRYING)"
+            ackSyncStatus == com.sih26001.mobilealert.data.local.AckSyncStatus.IN_FLIGHT -> "ACKNOWLEDGED • SYNCING..."
+            ackSyncStatus == com.sih26001.mobilealert.data.local.AckSyncStatus.PENDING -> "ACKNOWLEDGED • SYNC PENDING"
+            isAckPending || alert.status == AlertStatus.ACKNOWLEDGED -> "ACKNOWLEDGED • SYNC PENDING" // fallback for null or transit states
+            alert.status == AlertStatus.SILENCED -> "SILENCED (UNACKNOWLEDGED)"
+            else -> alert.status.name
+        }
+        InfoRow("Status:", statusDisplay, contentColor)
+
+        if (alert.acknowledgedAt != null) {
+            InfoRow("Acknowledged At:", alert.acknowledgedAt.toString(), contentColor)
+        }
 
         if (!alert.recommendedAction.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -125,29 +147,118 @@ private fun AlarmContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Actions
-        if (alert.status == AlertStatus.ACTIVE) {
-            Button(
-                onClick = onSilence,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Text("SILENCE ALARM", style = MaterialTheme.typography.titleMedium)
+        // Actions distinguishing SILENCE ALARM vs ACKNOWLEDGE
+        when (alert.status) {
+            AlertStatus.ACTIVE -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onSilence,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    ) {
+                        Text("SILENCE ALARM", style = MaterialTheme.typography.titleMedium)
+                    }
+
+                    OutlinedButton(
+                        onClick = onAcknowledge,
+                        enabled = !isAckPending,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
+                        Text(
+                            if (isAckPending) "ACKNOWLEDGING..." else "ACKNOWLEDGE",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = contentColor
+                        )
+                    }
+                }
             }
-        } else if (alert.status == AlertStatus.SILENCED) {
-            OutlinedButton(
-                onClick = onAcknowledge,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text("ACKNOWLEDGE", style = MaterialTheme.typography.titleMedium, color = contentColor)
+            AlertStatus.SILENCED -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Alarm is silenced locally. Operational acknowledgement is required.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(12.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = onAcknowledge,
+                        enabled = !isAckPending,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
+                        Text(
+                            if (isAckPending) "ACKNOWLEDGING..." else "ACKNOWLEDGE",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = contentColor
+                        )
+                    }
+                }
             }
+            AlertStatus.ACKNOWLEDGED -> {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = if (isAckPending) "ACKNOWLEDGED • SYNC PENDING" else "OPERATIONALLY ACKNOWLEDGED",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        if (isAckPending) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Acknowledgement recorded locally. Will sync with authoritative server once connected.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+            else -> { /* EXPIRED, DISPLAYED, RECEIVED */ }
+        }
+
+        if (ackError != null) {
+            Text(
+                text = ackError,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

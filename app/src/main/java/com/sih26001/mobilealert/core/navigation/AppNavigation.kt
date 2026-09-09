@@ -67,8 +67,12 @@ fun AppNavigation(
             route = "active_alarm/{alertId}",
             arguments = listOf(navArgument("alertId") { type = NavType.StringType }),
             deepLinks = listOf(navDeepLink { uriPattern = "sih26001://alert/{alertId}" })
-        ) {
-            val activeAlarmViewModel: ActiveAlarmViewModel = viewModel()
+        ) { backStackEntry ->
+            val activeAlarmViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                ActiveAlarmViewModel(
+                    savedStateHandle = backStackEntry.savedStateHandle
+                )
+            }
             ActiveAlarmScreen(
                 viewModel = activeAlarmViewModel,
                 onNavigateBack = {

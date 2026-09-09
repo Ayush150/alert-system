@@ -83,4 +83,18 @@ class Converters {
             emptyList()
         }
     }
+
+    @TypeConverter
+    fun fromAckSyncStatus(status: AckSyncStatus): String {
+        return status.name
+    }
+
+    @TypeConverter
+    fun toAckSyncStatus(value: String): AckSyncStatus {
+        return try {
+            AckSyncStatus.valueOf(value)
+        } catch (e: Exception) {
+            AckSyncStatus.PENDING
+        }
+    }
 }

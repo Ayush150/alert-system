@@ -260,12 +260,23 @@ class AlertDomainTest {
             override fun observeAllAlerts() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
             override fun observeActiveAlerts(activeStatuses: List<String>) = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
             override fun observeAlertById(id: String) = kotlinx.coroutines.flow.flowOf(null)
+            override fun getAlertById(id: String): com.sih26001.mobilealert.data.local.AlertEntity? = null
             override fun insertAlerts(alerts: List<com.sih26001.mobilealert.data.local.AlertEntity>) {}
             override fun insertAlert(alert: com.sih26001.mobilealert.data.local.AlertEntity) {}
             override fun updateStatus(id: String, status: AlertStatus) {}
             override fun updateAcknowledgedAt(id: String, timestamp: Instant) {}
         }
-        val repository = AlertRepositoryImpl(fakeApi, fakeDao)
+        val fakePendingAckDao = object : com.sih26001.mobilealert.data.local.PendingAckDao {
+            override fun observePendingAcks() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>())
+            override fun getPendingAcks() = emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>()
+            override fun getEligiblePendingAcks() = emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>()
+            override fun getPendingAckById(alertId: String): com.sih26001.mobilealert.data.local.PendingAckEntity? = null
+            override fun observeAckSyncStatus(alertId: String) = kotlinx.coroutines.flow.flowOf(null)
+            override fun insertOrIgnore(entity: com.sih26001.mobilealert.data.local.PendingAckEntity) = 1L
+            override fun update(entity: com.sih26001.mobilealert.data.local.PendingAckEntity) {}
+            override fun delete(alertId: String) {}
+        }
+        val repository = AlertRepositoryImpl(fakeApi, fakeDao, fakePendingAckDao)
         val useCase = GetActiveAlertsUseCase(repository)
 
         val activeAlerts = useCase().first()
@@ -281,12 +292,23 @@ class AlertDomainTest {
             override fun observeAllAlerts() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
             override fun observeActiveAlerts(activeStatuses: List<String>) = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
             override fun observeAlertById(id: String) = kotlinx.coroutines.flow.flowOf(null)
+            override fun getAlertById(id: String): com.sih26001.mobilealert.data.local.AlertEntity? = null
             override fun insertAlerts(alerts: List<com.sih26001.mobilealert.data.local.AlertEntity>) {}
             override fun insertAlert(alert: com.sih26001.mobilealert.data.local.AlertEntity) {}
             override fun updateStatus(id: String, status: AlertStatus) {}
             override fun updateAcknowledgedAt(id: String, timestamp: Instant) {}
         }
-        val repository = AlertRepositoryImpl(fakeApi, fakeDao)
+        val fakePendingAckDao = object : com.sih26001.mobilealert.data.local.PendingAckDao {
+            override fun observePendingAcks() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>())
+            override fun getPendingAcks() = emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>()
+            override fun getEligiblePendingAcks() = emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>()
+            override fun getPendingAckById(alertId: String): com.sih26001.mobilealert.data.local.PendingAckEntity? = null
+            override fun observeAckSyncStatus(alertId: String) = kotlinx.coroutines.flow.flowOf(null)
+            override fun insertOrIgnore(entity: com.sih26001.mobilealert.data.local.PendingAckEntity) = 1L
+            override fun update(entity: com.sih26001.mobilealert.data.local.PendingAckEntity) {}
+            override fun delete(alertId: String) {}
+        }
+        val repository = AlertRepositoryImpl(fakeApi, fakeDao, fakePendingAckDao)
         val useCase = GetAlertHistoryUseCase(repository)
 
         val historyAlerts = useCase().first()

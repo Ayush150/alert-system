@@ -73,6 +73,11 @@ class MainActivity : ComponentActivity() {
             SIH26001MobileAlertTheme {
                 val controller = androidx.navigation.compose.rememberNavController()
                 navController = controller
+                androidx.compose.runtime.LaunchedEffect(controller) {
+                    if (intent.data != null) {
+                        controller.handleDeepLink(intent)
+                    }
+                }
                 AppNavigation(navController = controller)
             }
         }

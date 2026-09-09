@@ -37,32 +37,64 @@ class MockAlertRepository : AlertRepository {
         }
     }
 
+    private val _pendingAckIds = MutableStateFlow<Set<String>>(emptySet())
+
+    override fun observePendingAckIds(): Flow<Set<String>> = _pendingAckIds
+
+    override fun observeAckSyncStatus(alertId: String): Flow<com.sih26001.mobilealert.data.local.AckSyncStatus?> {
+        return _pendingAckIds.map { ids ->
+            if (ids.contains(alertId)) com.sih26001.mobilealert.data.local.AckSyncStatus.PENDING else null
+        }
+    }
+
     override suspend fun acknowledgeAlert(alertId: String): Result<Unit> {
+        if (alertId.isBlank()) {
+            return Result.failure(IllegalArgumentException("alertId cannot be blank"))
+        }
+        val trimmedId = alertId.trim()
         val currentList = _alerts.value
-        val index = currentList.indexOfFirst { it.alertId == alertId }
-        if (index != -1) {
-            val updatedAlert = currentList[index].copy(
-                status = AlertStatus.ACKNOWLEDGED,
-                acknowledgedAt = Instant.now()
-            )
-            _alerts.value = currentList.toMutableList().apply { set(index, updatedAlert) }
+        val index = currentList.indexOfFirst { it.alertId == trimmedId }
+        if (index == -1) {
+            return Result.failure(NoSuchElementException("Alert $trimmedId not found"))
+        }
+
+        val existing = currentList[index]
+        if (existing.status == AlertStatus.ACKNOWLEDGED) {
             return Result.success(Unit)
         }
-        return Result.failure(Exception("Alert not found"))
+
+        val now = Instant.now()
+        val newStatus = if (existing.status == AlertStatus.EXPIRED) AlertStatus.EXPIRED else AlertStatus.ACKNOWLEDGED
+        val updatedAlert = existing.copy(
+            status = newStatus,
+            acknowledgedAt = now
+        )
+        _alerts.value = currentList.toMutableList().apply { set(index, updatedAlert) }
+        _pendingAckIds.value = _pendingAckIds.value + trimmedId
+        return Result.success(Unit)
     }
 
     override suspend fun silenceAlert(alertId: String): Result<Unit> {
+        if (alertId.isBlank()) {
+            return Result.failure(IllegalArgumentException("alertId cannot be blank"))
+        }
+        val trimmedId = alertId.trim()
         val currentList = _alerts.value
-        val index = currentList.indexOfFirst { it.alertId == alertId }
-        if (index != -1) {
-            // Only active alerts can be silenced.
-            if (currentList[index].status == AlertStatus.ACTIVE) {
-                val updatedAlert = currentList[index].copy(status = AlertStatus.SILENCED)
-                _alerts.value = currentList.toMutableList().apply { set(index, updatedAlert) }
-            }
+        val index = currentList.indexOfFirst { it.alertId == trimmedId }
+        if (index == -1) {
+            return Result.failure(NoSuchElementException("Alert $trimmedId not found"))
+        }
+
+        val existing = currentList[index]
+        if (existing.status == AlertStatus.ACKNOWLEDGED || existing.status == AlertStatus.EXPIRED) {
             return Result.success(Unit)
         }
-        return Result.failure(Exception("Alert not found"))
+
+        if (existing.status == AlertStatus.ACTIVE) {
+            val updatedAlert = existing.copy(status = AlertStatus.SILENCED)
+            _alerts.value = currentList.toMutableList().apply { set(index, updatedAlert) }
+        }
+        return Result.success(Unit)
     }
 
     override suspend fun refreshAlerts(): Result<Unit> {

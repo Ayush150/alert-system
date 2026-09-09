@@ -26,10 +26,30 @@ interface AlertRepository {
     fun getAlertById(alertId: String): Flow<Alert?>
 
     /**
-     * Marks an alert as acknowledged.
-     * This is an operational confirmation that must eventually sync to the backend.
+     * Marks an alert as operationally acknowledged.
+     *
+     * Contract rules:
+     * - Blank alert IDs fail safely.
+     * - Unknown alert IDs fail safely with NoSuchElementException.
+     * - Acknowledging an already ACKNOWLEDGED alert returns success (idempotent).
+     * - Transitions ACTIVE and SILENCED alerts to ACKNOWLEDGED, sets acknowledgedAt.
+     * - For EXPIRED alerts, preserves EXPIRED status while recording acknowledgedAt if applicable.
+     * - SILENCE must never produce an ACK.
+     * - ACK is an operational state, persisted locally and queued in Room for future backend synchronization.
      */
     suspend fun acknowledgeAlert(alertId: String): Result<Unit>
+
+    /**
+     * Observes the set of alert IDs whose operational acknowledgement is currently queued
+     * pending synchronization with the backend.
+     */
+    fun observePendingAckIds(): Flow<Set<String>>
+
+    /**
+     * Observes the detailed synchronization status of an operational acknowledgement for [alertId].
+     * Returns null if no acknowledgement record exists for the given alert ID.
+     */
+    fun observeAckSyncStatus(alertId: String): Flow<com.sih26001.mobilealert.data.local.AckSyncStatus?>
 
     /**
      * Suppresses local audible or vibration alarms for an active alert.

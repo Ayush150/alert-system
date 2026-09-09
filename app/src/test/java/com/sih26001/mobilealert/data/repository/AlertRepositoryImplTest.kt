@@ -22,12 +22,14 @@ class AlertRepositoryImplTest {
     private lateinit var repository: AlertRepositoryImpl
     private lateinit var mockApiService: FakeAlertApiService
     private lateinit var mockDao: FakeAlertDao
+    private lateinit var mockPendingAckDao: FakePendingAckDao
 
     @Before
     fun setup() {
         mockApiService = FakeAlertApiService()
         mockDao = FakeAlertDao()
-        repository = AlertRepositoryImpl(mockApiService, mockDao)
+        mockPendingAckDao = FakePendingAckDao()
+        repository = AlertRepositoryImpl(mockApiService, mockDao, mockPendingAckDao)
     }
 
     @Test
@@ -131,7 +133,7 @@ class AlertRepositoryImplTest {
     }
 
     @Test
-    fun `acknowledgeAlert updates status and retains alert`() = runTest {
+    fun `valid ACTIVE alert becomes ACKNOWLEDGED and sets acknowledgedAt and queues pending ACK`() = runTest {
         mockApiService.mockResponse = listOf(createMockDto("ALT-1", "CRITICAL", "ACTIVE"))
         repository.refreshAlerts()
 
@@ -145,10 +147,121 @@ class AlertRepositoryImplTest {
         assertEquals(1, history.size)
         assertEquals("ALT-1", history[0].alertId)
         assertEquals(AlertStatus.ACKNOWLEDGED, history[0].status)
+        assertNotNull(history[0].acknowledgedAt)
+
+        // Verify queued in Room pending_acks
+        val pendingAcks = mockPendingAckDao.getPendingAcks()
+        assertEquals(1, pendingAcks.size)
+        assertEquals("ALT-1", pendingAcks[0].alertId)
+        assertEquals(com.sih26001.mobilealert.data.local.AckSyncStatus.PENDING, pendingAcks[0].status)
+
+        // Verify observePendingAckIds
+        val pendingIds = repository.observePendingAckIds().first()
+        assertTrue(pendingIds.contains("ALT-1"))
     }
 
     @Test
-    fun `silenceAlert updates status but does not acknowledge`() = runTest {
+    fun `valid SILENCED alert becomes ACKNOWLEDGED`() = runTest {
+        mockApiService.mockResponse = listOf(createMockDto("ALT-1", "HIGH", "ACTIVE"))
+        repository.refreshAlerts()
+
+        // First silence it
+        repository.silenceAlert("ALT-1")
+        val silenced = repository.getAlertById("ALT-1").first()
+        assertEquals(AlertStatus.SILENCED, silenced?.status)
+
+        // Then acknowledge it
+        val ackResult = repository.acknowledgeAlert("ALT-1")
+        assertTrue(ackResult.isSuccess)
+
+        val acknowledged = repository.getAlertById("ALT-1").first()
+        assertEquals(AlertStatus.ACKNOWLEDGED, acknowledged?.status)
+        assertNotNull(acknowledged?.acknowledgedAt)
+    }
+
+    @Test
+    fun `blank alert ID fails safely`() = runTest {
+        val resultEmpty = repository.acknowledgeAlert("")
+        assertTrue(resultEmpty.isFailure)
+        assertTrue(resultEmpty.exceptionOrNull() is IllegalArgumentException)
+
+        val resultBlank = repository.acknowledgeAlert("   ")
+        assertTrue(resultBlank.isFailure)
+        assertTrue(resultBlank.exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
+    fun `unknown alert ID fails safely with NoSuchElementException`() = runTest {
+        mockApiService.mockResponse = listOf(createMockDto("ALT-1", "CRITICAL", "ACTIVE"))
+        repository.refreshAlerts()
+
+        val result = repository.acknowledgeAlert("ALT-NONEXISTENT")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is NoSuchElementException)
+    }
+
+    @Test
+    fun `duplicate ACK is idempotent and creates exactly one queue entry`() = runTest {
+        mockApiService.mockResponse = listOf(createMockDto("ALT-1", "CRITICAL", "ACTIVE"))
+        repository.refreshAlerts()
+
+        val ack1 = repository.acknowledgeAlert("ALT-1")
+        assertTrue(ack1.isSuccess)
+        assertEquals(1, mockPendingAckDao.getPendingAcks().size)
+
+        // Second ACK call
+        val ack2 = repository.acknowledgeAlert("ALT-1")
+        assertTrue(ack2.isSuccess)
+        // Must NOT create duplicate queue entry
+        assertEquals(1, mockPendingAckDao.getPendingAcks().size)
+    }
+
+    @Test
+    fun `transaction failure rolls back and returns failure without partial commit`() = runTest {
+        mockApiService.mockResponse = listOf(createMockDto("ALT-1", "CRITICAL", "ACTIVE"))
+        repository.refreshAlerts()
+
+        // Create repository with a failing transaction runner
+        val failingTxRunner = object : com.sih26001.mobilealert.data.local.DatabaseTransactionRunner {
+            override suspend fun <T> invoke(block: suspend () -> T): T {
+                throw RuntimeException("Database disk I/O error during transaction")
+            }
+        }
+        val repoWithFailingTx = AlertRepositoryImpl(
+            apiService = mockApiService,
+            alertDao = mockDao,
+            pendingAckDao = mockPendingAckDao,
+            transactionRunner = failingTxRunner
+        )
+
+        val ackResult = repoWithFailingTx.acknowledgeAlert("ALT-1")
+        assertTrue(ackResult.isFailure)
+        assertEquals("Database disk I/O error during transaction", ackResult.exceptionOrNull()?.message)
+
+        // Verify alert remains in original state and queue is empty
+        val alert = repoWithFailingTx.getAlertById("ALT-1").first()
+        assertEquals(AlertStatus.ACTIVE, alert?.status)
+        assertNull(alert?.acknowledgedAt)
+        assertTrue(mockPendingAckDao.getPendingAcks().isEmpty())
+    }
+
+    @Test
+    fun `observeAckSyncStatus delegates to pendingAckDao`() = runTest {
+        val now = Instant.now()
+        mockPendingAckDao.insertOrIgnore(
+            com.sih26001.mobilealert.data.local.PendingAckEntity(
+                alertId = "ALT-STATUS-1",
+                acknowledgedAt = now,
+                status = com.sih26001.mobilealert.data.local.AckSyncStatus.PENDING
+            )
+        )
+
+        val status = repository.observeAckSyncStatus("ALT-STATUS-1").first()
+        assertEquals(com.sih26001.mobilealert.data.local.AckSyncStatus.PENDING, status)
+    }
+
+    @Test
+    fun `silenceAlert updates status but does not acknowledge and does not create pending ACK`() = runTest {
         mockApiService.mockResponse = listOf(createMockDto("ALT-1", "CRITICAL", "ACTIVE"))
         repository.refreshAlerts()
 
@@ -159,10 +272,79 @@ class AlertRepositoryImplTest {
         val active = repository.getActiveAlerts().first()
         assertEquals(1, active.size)
         assertEquals(AlertStatus.SILENCED, active[0].status)
+        assertNull(active[0].acknowledgedAt)
 
         // It should NOT appear in history
         val history = repository.getAlertHistory().first()
         assertTrue(history.isEmpty())
+
+        // Must NOT create pending ACK
+        assertTrue(mockPendingAckDao.getPendingAcks().isEmpty())
+    }
+
+    @Test
+    fun `silenceAlert on already ACKNOWLEDGED alert does not revert to SILENCED`() = runTest {
+        mockApiService.mockResponse = listOf(createMockDto("ALT-1", "CRITICAL", "ACTIVE"))
+        repository.refreshAlerts()
+
+        repository.acknowledgeAlert("ALT-1")
+        val ackAlert = repository.getAlertById("ALT-1").first()
+        assertEquals(AlertStatus.ACKNOWLEDGED, ackAlert?.status)
+
+        // Try silencing
+        repository.silenceAlert("ALT-1")
+        val postSilence = repository.getAlertById("ALT-1").first()
+        assertEquals(AlertStatus.ACKNOWLEDGED, postSilence?.status)
+    }
+
+    @Test
+    fun `CRITICAL, HIGH, and NORMAL alerts can all be acknowledged`() = runTest {
+        mockApiService.mockResponse = listOf(
+            createMockDto("ALT-CRIT", "CRITICAL", "ACTIVE"),
+            createMockDto("ALT-HIGH", "HIGH", "ACTIVE"),
+            createMockDto("ALT-NORM", "NORMAL", "ACTIVE")
+        )
+        repository.refreshAlerts()
+
+        assertTrue(repository.acknowledgeAlert("ALT-CRIT").isSuccess)
+        assertTrue(repository.acknowledgeAlert("ALT-HIGH").isSuccess)
+        assertTrue(repository.acknowledgeAlert("ALT-NORM").isSuccess)
+
+        val history = repository.getAlertHistory().first()
+        assertEquals(3, history.size)
+    }
+
+    @Test
+    fun `expired alert preserves EXPIRED status while recording acknowledgedAt`() = runTest {
+        val expiredDto = AlertDto(
+            alert_id = "ALT-EXP-ACK",
+            event_type = "LANDSLIDE_RISK",
+            severity = "HIGH",
+            risk_score = 75.0,
+            location = LocationDto("Test", 10.0, 20.0),
+            issued_at = "2020-01-01T00:00:00Z",
+            expires_at = "2020-01-01T01:00:00Z",
+            top_drivers = listOf("Rain"),
+            recommended_action = "Stay alert",
+            affected_assets = emptyList(),
+            source = "Test",
+            data_quality = "GOOD",
+            requires_ack = false,
+            status = "ACTIVE"
+        )
+        mockApiService.mockResponse = listOf(expiredDto)
+        repository.refreshAlert("ALT-EXP-ACK")
+
+        val alertBefore = repository.getAlertById("ALT-EXP-ACK").first()
+        assertEquals(AlertStatus.EXPIRED, alertBefore?.status)
+
+        val ackResult = repository.acknowledgeAlert("ALT-EXP-ACK")
+        assertTrue(ackResult.isSuccess)
+
+        val alertAfter = repository.getAlertById("ALT-EXP-ACK").first()
+        // Status must remain EXPIRED, not reverted to ACTIVE or ACKNOWLEDGED
+        assertEquals(AlertStatus.EXPIRED, alertAfter?.status)
+        assertNotNull(alertAfter?.acknowledgedAt)
     }
 
     @Test
@@ -324,6 +506,10 @@ class FakeAlertDao : AlertDao {
         return entities.map { it[id] }
     }
 
+    override fun getAlertById(id: String): AlertEntity? {
+        return entities.value[id]
+    }
+
     override fun insertAlerts(alerts: List<AlertEntity>) {
         val current = entities.value.toMutableMap()
         alerts.forEach { current[it.alertId] = it }
@@ -350,5 +536,51 @@ class FakeAlertDao : AlertDao {
             current[id] = it.copy(acknowledgedAt = timestamp)
             entities.value = current
         }
+    }
+}
+
+class FakePendingAckDao : com.sih26001.mobilealert.data.local.PendingAckDao {
+    private val acks = MutableStateFlow<Map<String, com.sih26001.mobilealert.data.local.PendingAckEntity>>(emptyMap())
+
+    override fun observePendingAcks(): Flow<List<com.sih26001.mobilealert.data.local.PendingAckEntity>> {
+        return acks.map { it.values.sortedBy { ack -> ack.acknowledgedAt } }
+    }
+
+    override fun getPendingAcks(): List<com.sih26001.mobilealert.data.local.PendingAckEntity> {
+        return acks.value.values.sortedBy { it.acknowledgedAt }
+    }
+
+    override fun getEligiblePendingAcks(): List<com.sih26001.mobilealert.data.local.PendingAckEntity> {
+        return acks.value.values.filter { it.status != com.sih26001.mobilealert.data.local.AckSyncStatus.COMPLETED }.sortedBy { it.acknowledgedAt }
+    }
+
+    override fun getPendingAckById(alertId: String): com.sih26001.mobilealert.data.local.PendingAckEntity? {
+        return acks.value[alertId]
+    }
+
+    override fun observeAckSyncStatus(alertId: String): Flow<com.sih26001.mobilealert.data.local.AckSyncStatus?> {
+        return acks.map { it[alertId]?.status }
+    }
+
+    override fun insertOrIgnore(entity: com.sih26001.mobilealert.data.local.PendingAckEntity): Long {
+        val current = acks.value.toMutableMap()
+        if (current.containsKey(entity.alertId)) {
+            return -1L
+        }
+        current[entity.alertId] = entity
+        acks.value = current
+        return 1L
+    }
+
+    override fun update(entity: com.sih26001.mobilealert.data.local.PendingAckEntity) {
+        val current = acks.value.toMutableMap()
+        current[entity.alertId] = entity
+        acks.value = current
+    }
+
+    override fun delete(alertId: String) {
+        val current = acks.value.toMutableMap()
+        current.remove(alertId)
+        acks.value = current
     }
 }

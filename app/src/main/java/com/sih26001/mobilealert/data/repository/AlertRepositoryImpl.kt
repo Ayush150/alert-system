@@ -18,13 +18,22 @@ import com.sih26001.mobilealert.data.local.toEntity
 import java.io.IOException
 import java.time.Instant
 
+import com.sih26001.mobilealert.data.local.AckSyncStatus
+import com.sih26001.mobilealert.data.local.PendingAckDao
+import com.sih26001.mobilealert.data.local.PendingAckEntity
+
 /**
- * Phase 6A Room-backed repository implementation.
+ * Phase 6A/6D Room-backed repository implementation.
  * Connects the UI to the local Room database, which is updated from the REST API.
  */
 class AlertRepositoryImpl(
     private val apiService: AlertApiService,
-    private val alertDao: AlertDao
+    private val alertDao: AlertDao,
+    private val pendingAckDao: PendingAckDao,
+    private val transactionRunner: com.sih26001.mobilealert.data.local.DatabaseTransactionRunner = object : com.sih26001.mobilealert.data.local.DatabaseTransactionRunner {
+        override suspend fun <T> invoke(block: suspend () -> T): T = block()
+    },
+    private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO
 ) : AlertRepository {
 
     override fun getActiveAlerts(): Flow<List<Alert>> {
@@ -51,17 +60,79 @@ class AlertRepositoryImpl(
         return alertDao.observeAlertById(alertId).map { it?.toDomain() }
     }
 
-    override suspend fun acknowledgeAlert(alertId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        alertDao.updateStatus(alertId, AlertStatus.ACKNOWLEDGED)
-        alertDao.updateAcknowledgedAt(alertId, Instant.now())
-        Result.success(Unit)
+    override fun observePendingAckIds(): Flow<Set<String>> {
+        return pendingAckDao.observePendingAcks().map { list ->
+            list.map { it.alertId }.toSet()
+        }
     }
 
-    override suspend fun silenceAlert(alertId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        // According to the original logic, we only silence if it is active. 
-        // In this simple implementation we just update it. Wait, we should probably check first, but for now just update.
-        // Or we can leave the check to the ViewModel.
-        alertDao.updateStatus(alertId, AlertStatus.SILENCED)
+    override fun observeAckSyncStatus(alertId: String): Flow<AckSyncStatus?> {
+        return pendingAckDao.observeAckSyncStatus(alertId)
+    }
+
+    override suspend fun acknowledgeAlert(alertId: String): Result<Unit> = withContext(ioDispatcher) {
+        if (alertId.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("alertId cannot be blank"))
+        }
+
+        val trimmedId = alertId.trim()
+        val alertEntity = alertDao.getAlertById(trimmedId)
+            ?: return@withContext Result.failure(NoSuchElementException("Alert $trimmedId not found"))
+
+        // Idempotency: if already acknowledged, return success without duplicate actions
+        if (alertEntity.status == AlertStatus.ACKNOWLEDGED) {
+            return@withContext Result.success(Unit)
+        }
+
+        val now = Instant.now()
+        // If expired, preserve EXPIRED status while updating acknowledgedAt
+        val newStatus = if (alertEntity.status == AlertStatus.EXPIRED) {
+            AlertStatus.EXPIRED
+        } else {
+            AlertStatus.ACKNOWLEDGED
+        }
+
+        // Room transaction ensures AlertEntity status update and PendingAckEntity insertion are atomic
+        try {
+            transactionRunner {
+                alertDao.updateStatus(trimmedId, newStatus)
+                alertDao.updateAcknowledgedAt(trimmedId, now)
+
+                // Enqueue into Room offline queue for future authoritative backend synchronization
+                val pendingAck = PendingAckEntity(
+                    alertId = trimmedId,
+                    acknowledgedAt = now,
+                    retryCount = 0,
+                    lastAttemptAt = null,
+                    status = AckSyncStatus.PENDING
+                )
+                pendingAckDao.insertOrIgnore(pendingAck)
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun silenceAlert(alertId: String): Result<Unit> = withContext(ioDispatcher) {
+        if (alertId.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("alertId cannot be blank"))
+        }
+
+        val trimmedId = alertId.trim()
+        val alertEntity = alertDao.getAlertById(trimmedId)
+            ?: return@withContext Result.failure(NoSuchElementException("Alert $trimmedId not found"))
+
+        // Do not alter status if already acknowledged or expired
+        if (alertEntity.status == AlertStatus.ACKNOWLEDGED || alertEntity.status == AlertStatus.EXPIRED) {
+            return@withContext Result.success(Unit)
+        }
+
+        // SILENCE transitions ACTIVE -> SILENCED only
+        if (alertEntity.status == AlertStatus.ACTIVE) {
+            alertDao.updateStatus(trimmedId, AlertStatus.SILENCED)
+        }
+
         Result.success(Unit)
     }
 
@@ -77,7 +148,7 @@ class AlertRepositoryImpl(
 
             // Persist valid alerts into Room
             val entities = validAlerts.map { it.toEntity() }
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 alertDao.insertAlerts(entities)
             }
 
@@ -111,7 +182,7 @@ class AlertRepositoryImpl(
 
             // Persist valid alert into Room
             val entity = domainAlert.toEntity()
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 alertDao.insertAlert(entity)
             }
 
