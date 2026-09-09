@@ -41,4 +41,10 @@ interface AlertRepository {
      * Triggers a manual network fetch of alerts from the remote source.
      */
     suspend fun refreshAlerts(): Result<Unit>
+
+    /**
+     * Fetches and refreshes an authoritative alert by its unique [alertId] from the remote source,
+     * validating it and persisting it to local storage.
+     */
+    suspend fun refreshAlert(alertId: String): Result<Alert>
 }

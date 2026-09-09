@@ -70,6 +70,15 @@ class MockAlertRepository : AlertRepository {
         return Result.success(Unit)
     }
 
+    override suspend fun refreshAlert(alertId: String): Result<Alert> {
+        val alert = _alerts.value.find { it.alertId == alertId }
+        return if (alert != null) {
+            Result.success(alert)
+        } else {
+            Result.failure(NoSuchElementException("Alert $alertId not found"))
+        }
+    }
+
     // --- Developer Controls ---
 
     /**

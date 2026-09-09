@@ -44,6 +44,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var navController: androidx.navigation.NavHostController? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -69,7 +71,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SIH26001MobileAlertTheme {
-                AppNavigation()
+                val controller = androidx.navigation.compose.rememberNavController()
+                navController = controller
+                AppNavigation(navController = controller)
             }
         }
     }
@@ -78,6 +82,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         checkIntentForAlertId(intent)
+        navController?.handleDeepLink(intent)
     }
 
     private fun retrieveFcmToken() {
@@ -96,6 +101,10 @@ class MainActivity : ComponentActivity() {
         val alertId = intent?.extras?.getString("alert_id")?.trim()
         if (!alertId.isNullOrEmpty()) {
             Log.i(TAG, "FCM alert_id received from launch intent: $alertId")
+            // Only set data if data == null and extra is a validated, non-blank alert_id
+            if (intent.data == null) {
+                intent.data = android.net.Uri.parse("sih26001://alert/$alertId")
+            }
         }
     }
 }

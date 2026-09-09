@@ -35,8 +35,7 @@ class SihFirebaseMessagingService : FirebaseMessagingService() {
             when (val result = processor.processData(remoteMessage.data)) {
                 is FcmProcessingResult.ValidAlert -> {
                     Log.i(TAG, "FCM alert_id received: ${result.alertId}")
-                    // In Phase 6B, we only extract the alert_id as the trigger.
-                    // REST fetch and notification triggering are deferred to subsequent phases.
+                    com.sih26001.mobilealert.di.DependencyContainer.fcmAlertTriggerHandler.handleAlertTrigger(result.alertId)
                 }
                 is FcmProcessingResult.MissingAlertId -> {
                     Log.w(TAG, "FCM message rejected: missing or empty alert_id")

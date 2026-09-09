@@ -88,4 +88,38 @@ class AlertRepositoryImpl(
             Result.failure(e)
         }
     }
+
+    override suspend fun refreshAlert(alertId: String): Result<Alert> {
+        return try {
+            val dtos = apiService.getAlerts()
+            val matchingDto = dtos.find { it.alert_id == alertId }
+                ?: return Result.failure(NoSuchElementException("Alert $alertId not found in remote alerts"))
+
+            val validationResult = AlertValidator.validate(matchingDto)
+            if (validationResult is AlertValidator.Result.Invalid) {
+                return Result.failure(IllegalArgumentException("Malformed alert payload for $alertId: ${validationResult.reasons}"))
+            }
+
+            val validDto = (validationResult as AlertValidator.Result.Valid).dto
+            var domainAlert = AlertMapper.toDomain(validDto)
+
+            // Check if the alert has expired
+            val now = Instant.now()
+            if (domainAlert.expiresAt != null && domainAlert.expiresAt.isBefore(now)) {
+                domainAlert = domainAlert.copy(status = AlertStatus.EXPIRED)
+            }
+
+            // Persist valid alert into Room
+            val entity = domainAlert.toEntity()
+            withContext(Dispatchers.IO) {
+                alertDao.insertAlert(entity)
+            }
+
+            Result.success(domainAlert)
+        } catch (e: IOException) {
+            Result.failure(e)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

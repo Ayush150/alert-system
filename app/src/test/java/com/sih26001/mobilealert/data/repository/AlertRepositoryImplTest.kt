@@ -177,6 +177,103 @@ class AlertRepositoryImplTest {
         assertEquals(1, repository.getActiveAlerts().first().size)
     }
 
+    @Test
+    fun `refreshAlert with valid alertId fetches, validates, and persists alert`() = runTest {
+        mockApiService.mockResponse = listOf(createMockDto("ALT-1", "CRITICAL", "ACTIVE"))
+
+        val result = repository.refreshAlert("ALT-1")
+        assertTrue(result.isSuccess)
+
+        val alert = result.getOrNull()
+        assertNotNull(alert)
+        assertEquals("ALT-1", alert?.alertId)
+
+        // Verify persisted in Room DAO
+        val persisted = repository.getAlertById("ALT-1").first()
+        assertNotNull(persisted)
+        assertEquals("ALT-1", persisted?.alertId)
+    }
+
+    @Test
+    fun `refreshAlert with unknown alertId fails safely`() = runTest {
+        mockApiService.mockResponse = listOf(createMockDto("ALT-1", "CRITICAL", "ACTIVE"))
+
+        val result = repository.refreshAlert("ALT-UNKNOWN")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is NoSuchElementException)
+    }
+
+    @Test
+    fun `refreshAlert with malformed DTO fails validation and does not persist`() = runTest {
+        mockApiService.mockResponse = listOf(AlertDto(alert_id = "ALT-BAD")) // Missing required fields
+
+        val result = repository.refreshAlert("ALT-BAD")
+        assertTrue(result.isFailure)
+
+        // Verify not persisted
+        val persisted = repository.getAlertById("ALT-BAD").first()
+        assertNull(persisted)
+    }
+
+    @Test
+    fun `refreshAlert with expired alert sets status EXPIRED`() = runTest {
+        val expiredDto = AlertDto(
+            alert_id = "ALT-EXP",
+            event_type = "LANDSLIDE_RISK",
+            severity = "HIGH",
+            risk_score = 75.0,
+            location = LocationDto("Test", 10.0, 20.0),
+            issued_at = "2020-01-01T00:00:00Z",
+            expires_at = "2020-01-01T01:00:00Z", // Past date
+            top_drivers = listOf("Rain"),
+            recommended_action = "Stay alert",
+            affected_assets = emptyList(),
+            source = "Test",
+            data_quality = "GOOD",
+            requires_ack = false,
+            status = "ACTIVE"
+        )
+        mockApiService.mockResponse = listOf(expiredDto)
+
+        val result = repository.refreshAlert("ALT-EXP")
+        assertTrue(result.isSuccess)
+        assertEquals(AlertStatus.EXPIRED, result.getOrNull()?.status)
+    }
+
+    @Test
+    fun `refreshAlert preserves null riskScore and never defaults to zero`() = runTest {
+        val dtoWithNullRisk = AlertDto(
+            alert_id = "ALT-NULL-RISK",
+            event_type = "LANDSLIDE_RISK",
+            severity = "NORMAL",
+            risk_score = null, // Missing risk score
+            location = LocationDto("Test", 10.0, 20.0),
+            issued_at = "2026-09-08T10:15:00Z",
+            expires_at = "2026-09-08T11:15:00Z",
+            top_drivers = null,
+            recommended_action = null,
+            affected_assets = null,
+            source = "Test",
+            data_quality = null,
+            requires_ack = false,
+            status = "ACTIVE"
+        )
+        mockApiService.mockResponse = listOf(dtoWithNullRisk)
+
+        val result = repository.refreshAlert("ALT-NULL-RISK")
+        assertTrue(result.isSuccess)
+        assertNull(result.getOrNull()?.riskScore)
+    }
+
+    @Test
+    fun `refreshAlert handles IOException without crash`() = runTest {
+        mockApiService.shouldThrow = IOException("Connection reset")
+
+        val result = repository.refreshAlert("ALT-1")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IOException)
+    }
+
     private fun createMockDto(id: String, severity: String, status: String): AlertDto {
         return AlertDto(
             alert_id = id,
