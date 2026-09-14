@@ -148,3 +148,65 @@ When the SIH26001 backend team specifies the acknowledgement API, the contract m
 5. **Security**: Required auth headers (e.g. `Authorization: Bearer <token>`).
 
 Once finalized, a concrete `HttpAckSyncDataSource` will be implemented to replace `UnavailableAckSyncDataSource` without requiring any changes to Room, domain models, or UI presentation.
+
+---
+
+## 8. Phase 7: Backend Contract Integration Boundary
+
+Phase 7 audits and hardens the integration boundary to ensure that the eventual backend implementation can be plugged in seamlessly.
+
+### Contract Status
+As of Phase 7, the authoritative backend ACK contract remains **UNAVAILABLE**. No speculative endpoints, HTTP methods, DTOs, or authentication schemes have been added to the application.
+
+### Client-Side Adapter Boundary
+- **Transport Independence**: `AckSyncEngine` and `AckSyncDataSource` know nothing about HTTP. The future `HttpAckSyncDataSource` will be the sole component that knows about Retrofit, DTOs, and authentication.
+- **Future Transport Errors**: No speculative generic error mapping (e.g., `NetworkUnavailable`, `AuthFailure`) has been added to the engine. We map actual HTTP status codes to these categories only after the backend contract defines those semantics. Prefer simple implementation.
+
+### State Machine Guarantees
+- `UnavailableAckSyncDataSource` ALWAYS returns failure.
+- `PENDING` → `COMPLETED` is impossible without genuine transport success.
+- `FAILED` → `COMPLETED` is impossible without genuine transport success.
+- `IN_FLIGHT` → `COMPLETED` is impossible simply by attempting transmission.
+
+### Local vs Remote Idempotency Distinction
+- **Local**: Verified that `PendingAckEntity.alertId` is the primary key. Repeated local ACKs by the user are suppressed and do not create duplicate queue entries.
+- **Remote**: The backend's remote idempotency mechanism is intentionally left undefined in the client until the contract specifies it (e.g. relying on `Idempotency-Key` or trusting the `alert_id`).
+
+### Security Requirements Awaiting Specification
+The eventual ACK transport must define:
+- Authentication mechanism (e.g., Bearer tokens).
+- Operator and device identity encoding.
+- Secure transport requirements.
+- The client currently logs NO tokens, credentials, or PII.
+
+### Contract Gate
+Implementation of `HttpAckSyncDataSource` is **BLOCKED** until the authoritative backend contract provides:
+- Endpoint URL and HTTP Method
+- Request JSON Schema
+- Response JSON Schema
+- Authentication and Authorization headers
+- Success semantics (HTTP 200/202/204)
+- Error semantics (Retryable vs Non-retryable)
+- Idempotency semantics
+- Client/Server timestamp semantics
+
+---
+
+## 9. Phase 8: Operational ACK Lifecycle Hardening & Observability
+
+Phase 8 introduces deterministic observability and hardens the operational resilience of the ACK state machine without violating the Contract Gate.
+
+### Diagnostic Observability
+`PendingAckEntity` was expanded with diagnostic fields:
+- `lastFailureAt`: Tracks exactly when the last transport failure occurred.
+- `lastFailureMessage`: Safely truncated bounded string containing the exception message or HTTP failure reason.
+- `completedAt`: The exact local time the authoritative backend returned success.
+
+### Event Logger
+`AckSyncEventLogger` provides an abstraction for tracking the exact lifecycle of an acknowledgement (`ACK_CREATED`, `ACK_QUEUED`, `ACK_SYNC_ATTEMPT`, `ACK_SYNC_FAILED`, `ACK_RECOVERED`, `ACK_SYNC_COMPLETED`). This decouple telemetry from business logic.
+
+### Exception Isolation
+The `AckSyncEngine.reconcilePendingAcks()` loop protects the global concurrency `Mutex` against unexpected transport exceptions by isolating each alert sync attempt in a robust `try/catch`. Failures transition the record to `FAILED`, populate diagnostic fields, trigger the logger, and allow the engine to proceed to the next eligible ACK smoothly.
+
+### Schema Integrity
+A non-destructive Room migration (`MIGRATION_2_3`) ensures that adding the diagnostic fields does not result in the silent loss of offline queued ACKs.

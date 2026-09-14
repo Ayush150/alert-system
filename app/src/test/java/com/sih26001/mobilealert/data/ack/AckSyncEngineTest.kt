@@ -22,6 +22,7 @@ class AckSyncEngineTest {
     private lateinit var fakeDao: FakePendingAckDao
     private lateinit var fakeDataSource: FakeAckSyncDataSource
     private lateinit var fakeConnectivityMonitor: FakeConnectivityMonitor
+    private lateinit var fakeLogger: FakeAckSyncEventLogger
     private val retryPolicy = ExponentialBackoffAckRetryPolicy(
         baseDelayMs = 1_000L,
         multiplier = 2.0,
@@ -37,6 +38,7 @@ class AckSyncEngineTest {
         fakeDao = FakePendingAckDao()
         fakeDataSource = FakeAckSyncDataSource()
         fakeConnectivityMonitor = FakeConnectivityMonitor(online = true)
+        fakeLogger = FakeAckSyncEventLogger()
     }
 
     private fun createEngine(): AckSyncEngine {
@@ -46,6 +48,7 @@ class AckSyncEngineTest {
             ackRetryPolicy = retryPolicy,
             ackRecoveryPolicy = recoveryPolicy,
             connectivityMonitor = fakeConnectivityMonitor,
+            eventLogger = fakeLogger,
             dispatcher = testDispatcher
         )
     }
@@ -153,10 +156,10 @@ class AckSyncEngineTest {
     fun `different alerts can synchronize concurrently`() = runTest(testDispatcher) {
         val now = Instant.now()
         fakeDao.insertOrIgnore(
-            PendingAckEntity("ALT-005", now, 0, null, AckSyncStatus.PENDING)
+            PendingAckEntity(alertId = "ALT-005", acknowledgedAt = now, retryCount = 0, lastAttemptAt = null, status = AckSyncStatus.PENDING)
         )
         fakeDao.insertOrIgnore(
-            PendingAckEntity("ALT-006", now, 0, null, AckSyncStatus.PENDING)
+            PendingAckEntity(alertId = "ALT-006", acknowledgedAt = now, retryCount = 0, lastAttemptAt = null, status = AckSyncStatus.PENDING)
         )
         fakeDataSource.shouldSucceed = true
 
@@ -171,7 +174,7 @@ class AckSyncEngineTest {
     fun `reconcilePendingAcks skips reconciliation when device is offline`() = runTest(testDispatcher) {
         val now = Instant.now()
         fakeDao.insertOrIgnore(
-            PendingAckEntity("ALT-007", now, 0, null, AckSyncStatus.PENDING)
+            PendingAckEntity(alertId = "ALT-007", acknowledgedAt = now, retryCount = 0, lastAttemptAt = null, status = AckSyncStatus.PENDING)
         )
         fakeConnectivityMonitor.online = false
 
@@ -189,7 +192,7 @@ class AckSyncEngineTest {
     fun `exception thrown by transport does not crash engine and marks record FAILED`() = runTest(testDispatcher) {
         val now = Instant.now()
         fakeDao.insertOrIgnore(
-            PendingAckEntity("ALT-008", now, 0, null, AckSyncStatus.PENDING)
+            PendingAckEntity(alertId = "ALT-008", acknowledgedAt = now, retryCount = 0, lastAttemptAt = null, status = AckSyncStatus.PENDING)
         )
         fakeDataSource.throwException = true
 
@@ -207,10 +210,10 @@ class AckSyncEngineTest {
     fun `one failing record does not prevent other records from synchronizing`() = runTest(testDispatcher) {
         val now = Instant.now()
         fakeDao.insertOrIgnore(
-            PendingAckEntity("ALT-009", now, 0, null, AckSyncStatus.PENDING)
+            PendingAckEntity(alertId = "ALT-009", acknowledgedAt = now, retryCount = 0, lastAttemptAt = null, status = AckSyncStatus.PENDING)
         )
         fakeDao.insertOrIgnore(
-            PendingAckEntity("ALT-010", now, 0, null, AckSyncStatus.PENDING)
+            PendingAckEntity(alertId = "ALT-010", acknowledgedAt = now, retryCount = 0, lastAttemptAt = null, status = AckSyncStatus.PENDING)
         )
 
         // Custom transport: fail ALT-009, succeed ALT-010
@@ -236,11 +239,41 @@ class AckSyncEngineTest {
         val processed = engine.reconcilePendingAcks()
 
         assertEquals(2, processed)
-        assertEquals(AckSyncStatus.FAILED, fakeDao.getPendingAckById("ALT-009")?.status)
-        assertEquals(AckSyncStatus.COMPLETED, fakeDao.getPendingAckById("ALT-010")?.status)
+        val failedRecord = fakeDao.getPendingAckById("ALT-009")
+        assertEquals(AckSyncStatus.FAILED, failedRecord?.status)
+        assertNotNull(failedRecord?.lastFailureAt)
+        assertEquals("Network error", failedRecord?.lastFailureMessage)
+        
+        val completedRecord = fakeDao.getPendingAckById("ALT-010")
+        assertEquals(AckSyncStatus.COMPLETED, completedRecord?.status)
+        assertNotNull(completedRecord?.completedAt)
+    }
+
+    @Test(expected = kotlinx.coroutines.CancellationException::class)
+    fun `cancellation during sync is rethrown and not swallowed`() = runTest(testDispatcher) {
+        val now = Instant.now()
+        fakeDao.insertOrIgnore(
+            PendingAckEntity(alertId = "ALT-011", acknowledgedAt = now, retryCount = 0, lastAttemptAt = null, status = AckSyncStatus.PENDING)
+        )
+        fakeDataSource.throwCancellation = true
+
+        val engine = createEngine()
+        engine.reconcilePendingAcks()
     }
 
     // --- Test Doubles ---
+
+    private class FakeAckSyncEventLogger : AckSyncEventLogger {
+        var completedCalls = 0
+        var failureCalls = 0
+        var attemptCalls = 0
+        override fun recordCreated(alertId: String) {}
+        override fun recordQueued(alertId: String) {}
+        override fun recordAttempt(alertId: String, retryCount: Int) { attemptCalls++ }
+        override fun recordFailure(alertId: String, retryCount: Int, message: String?) { failureCalls++ }
+        override fun recordRecovered(alertId: String) {}
+        override fun recordCompleted(alertId: String, timestamp: Instant) { completedCalls++ }
+    }
 
     private class FakeConnectivityMonitor(var online: Boolean) : NetworkConnectivityMonitor {
         override fun isOnline(): Boolean = online
@@ -249,6 +282,7 @@ class AckSyncEngineTest {
     private class FakeAckSyncDataSource : AckSyncDataSource {
         var shouldSucceed: Boolean = true
         var throwException: Boolean = false
+        var throwCancellation: Boolean = false
         var synchronizeCallCount: Int = 0
         var delayMs: Long = 0L
 
@@ -256,6 +290,9 @@ class AckSyncEngineTest {
             synchronizeCallCount++
             if (delayMs > 0) {
                 delay(delayMs)
+            }
+            if (throwCancellation) {
+                throw kotlinx.coroutines.CancellationException("Simulated coroutine cancellation")
             }
             if (throwException) {
                 throw RuntimeException("Unexpected socket crash")

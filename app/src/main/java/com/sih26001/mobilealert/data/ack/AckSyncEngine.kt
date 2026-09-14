@@ -4,6 +4,7 @@ import android.util.Log
 import com.sih26001.mobilealert.data.local.AckSyncStatus
 import com.sih26001.mobilealert.data.local.PendingAckDao
 import com.sih26001.mobilealert.data.local.PendingAckEntity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -25,6 +26,7 @@ class AckSyncEngine(
     private val ackRetryPolicy: AckRetryPolicy,
     private val ackRecoveryPolicy: AckRecoveryPolicy,
     private val connectivityMonitor: NetworkConnectivityMonitor,
+    private val eventLogger: AckSyncEventLogger? = null,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     companion object {
@@ -65,7 +67,10 @@ class AckSyncEngine(
                     )
                     pendingAckDao.update(recoveredEntity)
                     recoveredCount++
+                    eventLogger?.recordRecovered(ack.alertId)
                     Log.i(TAG, "Recovered stale IN_FLIGHT record for alert=${ack.alertId} to FAILED state.")
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to recover stale record for alert=${ack.alertId}", e)
                 }
@@ -140,38 +145,54 @@ class AckSyncEngine(
                     lastAttemptAt = attemptTime
                 )
                 pendingAckDao.update(inFlightEntity)
+                eventLogger?.recordAttempt(currentAck.alertId, currentAck.retryCount + 1)
                 Log.i(TAG, "Sync attempt started for alert=${currentAck.alertId}, attempt=${currentAck.retryCount + 1}")
 
                 // Invoke contract transport
                 val result = ackSyncDataSource.synchronizeAck(inFlightEntity)
 
                 if (result.isSuccess) {
+                    val completedTime = Instant.now()
                     // Transition: -> COMPLETED on genuine authoritative server success
                     val completedEntity = inFlightEntity.copy(
-                        status = AckSyncStatus.COMPLETED
+                        status = AckSyncStatus.COMPLETED,
+                        completedAt = completedTime
                     )
                     pendingAckDao.update(completedEntity)
+                    eventLogger?.recordCompleted(currentAck.alertId, completedTime)
                     Log.i(TAG, "Sync succeeded for alert=${currentAck.alertId}: marked COMPLETED")
                 } else {
                     // Transition: -> FAILED
                     val failureThrowable = result.exceptionOrNull()
+                    val failureMsg = failureThrowable?.message?.take(255)
                     val failedEntity = inFlightEntity.copy(
                         status = AckSyncStatus.FAILED,
-                        retryCount = currentAck.retryCount + 1
+                        retryCount = currentAck.retryCount + 1,
+                        lastFailureAt = Instant.now(),
+                        lastFailureMessage = failureMsg
                     )
                     pendingAckDao.update(failedEntity)
-                    Log.w(TAG, "Sync failed for alert=${currentAck.alertId} (retryCount=${failedEntity.retryCount}): ${failureThrowable?.message}")
+                    eventLogger?.recordFailure(currentAck.alertId, failedEntity.retryCount, failureMsg)
+                    Log.w(TAG, "Sync failed for alert=${currentAck.alertId} (retryCount=${failedEntity.retryCount}): $failureMsg")
                 }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
             } catch (t: Throwable) {
                 // Catch any unexpected exception to prevent crashing the engine or process
+                val failureMsg = t.message?.take(255)
                 Log.e(TAG, "Unexpected error during ACK sync for alert=${ack.alertId}", t)
                 try {
                     val failedEntity = ack.copy(
                         status = AckSyncStatus.FAILED,
                         retryCount = ack.retryCount + 1,
-                        lastAttemptAt = Instant.now()
+                        lastAttemptAt = Instant.now(),
+                        lastFailureAt = Instant.now(),
+                        lastFailureMessage = failureMsg
                     )
                     pendingAckDao.update(failedEntity)
+                    eventLogger?.recordFailure(ack.alertId, failedEntity.retryCount, failureMsg)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
                 } catch (dbEx: Exception) {
                     Log.e(TAG, "Failed to record FAILED status in Room for alert=${ack.alertId}", dbEx)
                 }

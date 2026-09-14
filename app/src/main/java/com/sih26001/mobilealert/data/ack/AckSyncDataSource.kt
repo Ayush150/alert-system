@@ -7,8 +7,14 @@ import com.sih26001.mobilealert.data.local.PendingAckEntity
  *
  * Contract Independence:
  * The SIH backend has not yet finalized or published an HTTP endpoint or wire schema for ACKs.
- * This abstraction allows the mobile client to orchestrate queue consumption, backoff,
- * and state transitions without being tied to any specific network transport.
+ * This interface intentionally hides transport details so the mobile client can orchestrate 
+ * queue consumption, backoff, and state transitions without being tied to a specific network transport.
+ *
+ * Guarantees required from implementations:
+ * 1. [Result.success] MUST ONLY be returned upon genuine authoritative backend acceptance.
+ * 2. Transport failures must remain failures and return [Result.failure].
+ * 3. Authentication or authorization failures must NOT be silently converted into success.
+ * 4. HTTP conflicts (e.g., 409) must only be treated as success if the authoritative contract explicitly defines their semantics as such.
  */
 interface AckSyncDataSource {
     /**

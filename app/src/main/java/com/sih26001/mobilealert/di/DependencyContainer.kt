@@ -28,7 +28,10 @@ object DependencyContainer {
             appContext,
             com.sih26001.mobilealert.data.local.AppDatabase::class.java,
             "alerts.db"
-        ).fallbackToDestructiveMigration().build()
+        )
+        .addMigrations(com.sih26001.mobilealert.data.local.AppDatabase.MIGRATION_2_3)
+        .fallbackToDestructiveMigration()
+        .build()
 
         // Start observing network changes
         ackSyncCoordinator.startObserving()
@@ -45,6 +48,8 @@ object DependencyContainer {
                 if (processed > 0) {
                     Log.i("DependencyContainer", "Reconciled $processed ACK records on startup.")
                 }
+            } catch (cancellation: kotlinx.coroutines.CancellationException) {
+                throw cancellation
             } catch (t: Throwable) {
                 Log.e("DependencyContainer", "Unexpected error during startup ACK recovery/sync", t)
             }
@@ -67,7 +72,8 @@ object DependencyContainer {
             apiService = alertApiService, 
             alertDao = database.alertDao(),
             pendingAckDao = database.pendingAckDao(),
-            transactionRunner = databaseTransactionRunner
+            transactionRunner = databaseTransactionRunner,
+            eventLogger = ackSyncEventLogger
         )
     }
 
@@ -96,13 +102,18 @@ object DependencyContainer {
         com.sih26001.mobilealert.data.ack.UnavailableAckSyncDataSource()
     }
 
+    val ackSyncEventLogger: com.sih26001.mobilealert.data.ack.AckSyncEventLogger by lazy {
+        com.sih26001.mobilealert.data.ack.AndroidAckSyncEventLogger()
+    }
+
     val ackSyncEngine: com.sih26001.mobilealert.data.ack.AckSyncEngine by lazy {
         com.sih26001.mobilealert.data.ack.AckSyncEngine(
             pendingAckDao = pendingAckDao,
             ackSyncDataSource = ackSyncDataSource,
             ackRetryPolicy = ackRetryPolicy,
             ackRecoveryPolicy = ackRecoveryPolicy,
-            connectivityMonitor = networkConnectivityMonitor
+            connectivityMonitor = networkConnectivityMonitor,
+            eventLogger = ackSyncEventLogger
         )
     }
 

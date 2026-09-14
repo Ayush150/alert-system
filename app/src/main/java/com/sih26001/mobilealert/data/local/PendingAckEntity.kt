@@ -21,5 +21,8 @@ data class PendingAckEntity(
     val acknowledgedAt: Instant,
     val retryCount: Int = 0,
     val lastAttemptAt: Instant? = null,
+    val lastFailureAt: Instant? = null,
+    val lastFailureMessage: String? = null,
+    val completedAt: Instant? = null,
     val status: AckSyncStatus
 )

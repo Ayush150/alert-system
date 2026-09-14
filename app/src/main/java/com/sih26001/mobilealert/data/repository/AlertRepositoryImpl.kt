@@ -33,6 +33,7 @@ class AlertRepositoryImpl(
     private val transactionRunner: com.sih26001.mobilealert.data.local.DatabaseTransactionRunner = object : com.sih26001.mobilealert.data.local.DatabaseTransactionRunner {
         override suspend fun <T> invoke(block: suspend () -> T): T = block()
     },
+    private val eventLogger: com.sih26001.mobilealert.data.ack.AckSyncEventLogger? = null,
     private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO
 ) : AlertRepository {
 
@@ -106,9 +107,15 @@ class AlertRepositoryImpl(
                     lastAttemptAt = null,
                     status = AckSyncStatus.PENDING
                 )
-                pendingAckDao.insertOrIgnore(pendingAck)
+                val rowId = pendingAckDao.insertOrIgnore(pendingAck)
+                if (rowId != -1L) {
+                    eventLogger?.recordCreated(trimmedId)
+                    eventLogger?.recordQueued(trimmedId)
+                }
             }
             Result.success(Unit)
+        } catch (cancellation: kotlinx.coroutines.CancellationException) {
+            throw cancellation
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -153,6 +160,8 @@ class AlertRepositoryImpl(
             }
 
             Result.success(Unit)
+        } catch (cancellation: kotlinx.coroutines.CancellationException) {
+            throw cancellation
         } catch (e: IOException) {
             Result.failure(e)
         } catch (e: Exception) {
@@ -187,6 +196,8 @@ class AlertRepositoryImpl(
             }
 
             Result.success(domainAlert)
+        } catch (cancellation: kotlinx.coroutines.CancellationException) {
+            throw cancellation
         } catch (e: IOException) {
             Result.failure(e)
         } catch (e: Exception) {

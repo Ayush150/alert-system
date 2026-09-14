@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -85,6 +86,8 @@ class AckSyncCoordinator(
                         if (processed > 0) {
                             Log.i("AckSyncCoordinator", "Reconciled $processed ACK records.")
                         }
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
                     } catch (t: Throwable) {
                         Log.e("AckSyncCoordinator", "Unexpected error during coordinated sync", t)
                     }

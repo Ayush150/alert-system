@@ -47,7 +47,7 @@ class DatabaseMigrationTest {
 
     @Test
     fun database_stores_and_reads_alerts_and_pending_acks() = runBlocking {
-        val now = Instant.now()
+        val now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
         val alert = AlertEntity(
             alertId = "ALT-ROOM-001",
             eventType = "landslide",
@@ -96,11 +96,19 @@ class DatabaseMigrationTest {
         assertEquals(1, pendingAckDao.getPendingAcks().size)
 
         // Test update
-        val inFlight = pendingAck.copy(status = AckSyncStatus.IN_FLIGHT, retryCount = 1)
+        val inFlight = pendingAck.copy(
+            status = AckSyncStatus.FAILED, 
+            retryCount = 1,
+            lastFailureAt = now,
+            lastFailureMessage = "Timeout",
+            completedAt = null
+        )
         pendingAckDao.update(inFlight)
         val updated = pendingAckDao.getPendingAckById("ALT-ROOM-001")
-        assertEquals(AckSyncStatus.IN_FLIGHT, updated?.status)
+        assertEquals(AckSyncStatus.FAILED, updated?.status)
         assertEquals(1, updated?.retryCount)
+        assertEquals(now, updated?.lastFailureAt)
+        assertEquals("Timeout", updated?.lastFailureMessage)
 
         // Test eligible query excludes COMPLETED
         val eligibleList = pendingAckDao.getEligiblePendingAcks()
