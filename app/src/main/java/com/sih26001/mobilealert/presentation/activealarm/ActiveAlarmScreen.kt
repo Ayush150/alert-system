@@ -1,16 +1,65 @@
 package com.sih26001.mobilealert.presentation.activealarm
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.sih26001.mobilealert.R
+import com.sih26001.mobilealert.core.ui.theme.AlertRed100
+import com.sih26001.mobilealert.core.ui.theme.AlertRed50
+import com.sih26001.mobilealert.core.ui.theme.AlertRed600
+import com.sih26001.mobilealert.core.ui.theme.AlertRed900
+import com.sih26001.mobilealert.core.ui.theme.SafeBlue700
+import com.sih26001.mobilealert.core.ui.theme.Slate100
+import com.sih26001.mobilealert.core.ui.theme.Slate200
+import com.sih26001.mobilealert.core.ui.theme.Slate300
+import com.sih26001.mobilealert.core.ui.theme.Slate400
+import com.sih26001.mobilealert.core.ui.theme.Slate500
+import com.sih26001.mobilealert.core.ui.theme.Slate600
+import com.sih26001.mobilealert.core.ui.theme.Slate700
+import com.sih26001.mobilealert.core.ui.theme.Slate800
+import com.sih26001.mobilealert.core.ui.theme.Slate900
+import com.sih26001.mobilealert.core.ui.theme.WarningAmber100
+import com.sih26001.mobilealert.core.ui.theme.WarningAmber50
+import com.sih26001.mobilealert.core.ui.theme.WarningAmber600
+import com.sih26001.mobilealert.core.ui.theme.WarningAmber700
+import com.sih26001.mobilealert.core.ui.theme.WarningAmber900
 import com.sih26001.mobilealert.domain.model.Alert
 import com.sih26001.mobilealert.domain.model.AlertSeverity
 import com.sih26001.mobilealert.domain.model.AlertStatus
@@ -20,6 +69,7 @@ import com.sih26001.mobilealert.domain.model.AlertStatus
 fun ActiveAlarmScreen(
     viewModel: ActiveAlarmViewModel,
     onNavigateBack: () -> Unit,
+    onNavigateToSafePlace: (alertId: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val alert by viewModel.alert.collectAsState()
@@ -30,12 +80,24 @@ fun ActiveAlarmScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Active Alarm") },
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.action_view_details),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Slate900
+                        )
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Text("←", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            text = "←",
+                            style = MaterialTheme.typography.titleLarge.copy(color = Slate900)
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
         modifier = modifier
@@ -44,19 +106,19 @@ fun ActiveAlarmScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp),
-            contentAlignment = Alignment.TopCenter
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
             if (alert == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
-                AlarmContent(
+                AlertDetailsContent(
                     alert = alert!!,
                     isAckPending = isAckPending,
                     ackSyncStatus = ackSyncStatus,
                     ackError = ackError,
                     onSilence = viewModel::silenceAlert,
-                    onAcknowledge = viewModel::acknowledgeAlert
+                    onAcknowledge = viewModel::acknowledgeAlert,
+                    onFindSafePlace = { onNavigateToSafePlace(alert!!.alertId) }
                 )
             }
         }
@@ -64,212 +126,288 @@ fun ActiveAlarmScreen(
 }
 
 @Composable
-private fun AlarmContent(
+private fun AlertDetailsContent(
     alert: Alert,
     isAckPending: Boolean,
     ackSyncStatus: com.sih26001.mobilealert.data.local.AckSyncStatus?,
     ackError: String?,
     onSilence: () -> Unit,
-    onAcknowledge: () -> Unit
+    onAcknowledge: () -> Unit,
+    onFindSafePlace: () -> Unit
 ) {
-    val backgroundColor = when (alert.severity) {
-        AlertSeverity.CRITICAL -> MaterialTheme.colorScheme.errorContainer
-        AlertSeverity.HIGH -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.secondaryContainer
-    }
-
-    val contentColor = when (alert.severity) {
-        AlertSeverity.CRITICAL -> MaterialTheme.colorScheme.onErrorContainer
-        AlertSeverity.HIGH -> MaterialTheme.colorScheme.onTertiaryContainer
-        else -> MaterialTheme.colorScheme.onSecondaryContainer
-    }
+    val isCritical = alert.severity == AlertSeverity.CRITICAL
+    val cardBg = if (isCritical) AlertRed50 else WarningAmber50
+    val cardBorder = if (isCritical) AlertRed600 else WarningAmber600
+    val headerColor = if (isCritical) AlertRed900 else WarningAmber900
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .background(backgroundColor, shape = MaterialTheme.shapes.medium)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = alert.severity.name,
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = contentColor
-        )
-
-        Text(
-            text = alert.eventType,
-            style = MaterialTheme.typography.titleLarge,
-            color = contentColor,
-            textAlign = TextAlign.Center
-        )
-
-        HorizontalDivider(color = contentColor.copy(alpha = 0.2f))
-
-        val riskText = alert.riskScore?.let { "${(it * 100).toInt()}/100" } ?: "Unavailable"
-        InfoRow("Risk Score:", riskText, contentColor)
-
-        val locText = alert.location?.let { "${it.latitude}, ${it.longitude}" } ?: "Unknown"
-        InfoRow("Location:", locText, contentColor)
-
-        val statusDisplay = when {
-            ackSyncStatus == com.sih26001.mobilealert.data.local.AckSyncStatus.COMPLETED -> "ACKNOWLEDGED • SYNCED"
-            ackSyncStatus == com.sih26001.mobilealert.data.local.AckSyncStatus.FAILED -> "ACKNOWLEDGED • SYNC PENDING (RETRYING)"
-            ackSyncStatus == com.sih26001.mobilealert.data.local.AckSyncStatus.IN_FLIGHT -> "ACKNOWLEDGED • SYNCING..."
-            ackSyncStatus == com.sih26001.mobilealert.data.local.AckSyncStatus.PENDING -> "ACKNOWLEDGED • SYNC PENDING"
-            isAckPending || alert.status == AlertStatus.ACKNOWLEDGED -> "ACKNOWLEDGED • SYNC PENDING" // fallback for null or transit states
-            alert.status == AlertStatus.SILENCED -> "SILENCED (UNACKNOWLEDGED)"
-            else -> alert.status.name
-        }
-        InfoRow("Status:", statusDisplay, contentColor)
-
-        if (alert.acknowledgedAt != null) {
-            InfoRow("Acknowledged At:", alert.acknowledgedAt.toString(), contentColor)
-        }
-
-        if (!alert.recommendedAction.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Recommended Action:",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = contentColor
-            )
-            Text(
-                text = alert.recommendedAction,
-                style = MaterialTheme.typography.bodyLarge,
-                color = contentColor,
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Actions distinguishing SILENCE ALARM vs ACKNOWLEDGE
-        when (alert.status) {
-            AlertStatus.ACTIVE -> {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(2.dp, cardBorder, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Header badge
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = cardBorder
                 ) {
-                    Button(
-                        onClick = onSilence,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    ) {
-                        Text("SILENCE ALARM", style = MaterialTheme.typography.titleMedium)
-                    }
-
-                    OutlinedButton(
-                        onClick = onAcknowledge,
-                        enabled = !isAckPending,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                    ) {
-                        Text(
-                            if (isAckPending) "ACKNOWLEDGING..." else "ACKNOWLEDGE",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = contentColor
-                        )
-                    }
+                    Text(
+                        text = if (isCritical) "🚨 " + stringResource(id = R.string.alert_high_title) else "⚠️ " + stringResource(id = R.string.alert_warning_title),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
-            }
-            AlertStatus.SILENCED -> {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Alarm is silenced locally. Operational acknowledgement is required.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(12.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
 
-                    OutlinedButton(
-                        onClick = onAcknowledge,
-                        enabled = !isAckPending,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                    ) {
-                        Text(
-                            if (isAckPending) "ACKNOWLEDGING..." else "ACKNOWLEDGE",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = contentColor
+                Text(
+                    text = if (isCritical) stringResource(id = R.string.alert_high_subtitle) else stringResource(id = R.string.alert_warning_subtitle),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        color = headerColor
+                    )
+                )
+
+                HorizontalDivider(color = cardBorder.copy(alpha = 0.25f))
+
+                // 1. WHAT HAPPENED?
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(id = R.string.question_what_happened),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            color = Slate900
                         )
-                    }
+                    )
+                    Text(
+                        text = "Unusual ground conditions have been detected near ${alert.location?.name ?: "the monitored area"}.",
+                        style = MaterialTheme.typography.bodyMedium.copy(color = Slate800)
+                    )
                 }
-            }
-            AlertStatus.ACKNOWLEDGED -> {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = if (isAckPending) "ACKNOWLEDGED • SYNC PENDING" else "OPERATIONALLY ACKNOWLEDGED",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+
+                // 2. WHY? (Max 3 drivers)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(id = R.string.question_why),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            color = Slate900
                         )
-                        if (isAckPending) {
-                            Spacer(modifier = Modifier.height(4.dp))
+                    )
+                    val drivers = alert.topDrivers?.take(3)
+                    if (!drivers.isNullOrEmpty()) {
+                        drivers.forEach { factor ->
                             Text(
-                                text = "Acknowledgement recorded locally. Will sync with authoritative server once connected.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                textAlign = TextAlign.Center
+                                text = "• $factor",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = Slate800)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = stringResource(id = R.string.why_unavailable),
+                            style = MaterialTheme.typography.bodySmall.copy(color = Slate500)
+                        )
+                    }
+                }
+
+                // 3. WHERE?
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "WHERE?",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            color = Slate900
+                        )
+                    )
+                    Text(
+                        text = "📍 ${alert.location?.name ?: stringResource(id = R.string.data_unavailable)}",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = Slate800
+                        )
+                    )
+                }
+
+                // 4. WHAT SHOULD I DO?
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(id = R.string.question_what_to_do),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            color = headerColor
+                        )
+                    )
+                    val instruction = alert.recommendedAction?.takeIf { it.isNotBlank() }
+                        ?: if (isCritical) stringResource(id = R.string.high_alert_instruction_default) else stringResource(id = R.string.warning_instruction_default)
+                    Text(
+                        text = instruction,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = headerColor
+                        )
+                    )
+                }
+
+                // 5. WHERE SHOULD I GO?
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(id = R.string.question_where_to_go),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            color = Slate900
+                        )
+                    )
+                    Text(
+                        text = "Nearest verified safe location or designated high ground relief center.",
+                        style = MaterialTheme.typography.bodyMedium.copy(color = Slate800)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Primary Action Button: FIND SAFE PLACE
+                Button(
+                    onClick = onFindSafePlace,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isCritical) AlertRed600 else SafeBlue700)
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.action_find_safe_place),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                }
+            }
+        }
+
+        // Silence vs Acknowledge Section (Section 10)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Slate200, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "Operational Controls",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Slate600
+                    )
+                )
+
+                if (alert.status == AlertStatus.ACTIVE) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onSilence,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, Slate400)
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.action_silence),
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Slate800
+                                )
+                            )
+                        }
+
+                        Button(
+                            onClick = onAcknowledge,
+                            enabled = !isAckPending,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Slate900)
+                        ) {
+                            Text(
+                                text = if (isAckPending) stringResource(id = R.string.action_acknowledging) else stringResource(id = R.string.action_acknowledge),
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
                             )
                         }
                     }
+                } else if (alert.status == AlertStatus.SILENCED) {
+                    Text(
+                        text = stringResource(id = R.string.silence_notice),
+                        style = MaterialTheme.typography.bodySmall.copy(color = Slate600)
+                    )
+                    Button(
+                        onClick = onAcknowledge,
+                        enabled = !isAckPending,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Slate900)
+                    ) {
+                        Text(
+                            text = if (isAckPending) stringResource(id = R.string.action_acknowledging) else stringResource(id = R.string.action_acknowledge),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+                    }
+                } else if (alert.status == AlertStatus.ACKNOWLEDGED) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Slate100,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "✓ " + stringResource(id = R.string.action_acknowledged),
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Slate900
+                                )
+                            )
+                            if (isAckPending) {
+                                Text(
+                                    text = stringResource(id = R.string.sync_pending_notice),
+                                    style = MaterialTheme.typography.bodySmall.copy(color = Slate600)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (ackError != null) {
+                    Text(
+                        text = ackError,
+                        color = AlertRed600,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
-            else -> { /* EXPIRED, DISPLAYED, RECEIVED */ }
         }
 
-        if (ackError != null) {
-            Text(
-                text = ackError,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String, color: androidx.compose.ui.graphics.Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = label, style = MaterialTheme.typography.bodyLarge, color = color, fontWeight = FontWeight.Bold)
-        Text(text = value, style = MaterialTheme.typography.bodyLarge, color = color)
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }

@@ -537,6 +537,10 @@ class FakeAlertDao : AlertDao {
             entities.value = current
         }
     }
+
+    override fun deleteAllAlerts() {
+        entities.value = emptyMap()
+    }
 }
 
 class FakePendingAckDao : com.sih26001.mobilealert.data.local.PendingAckDao {

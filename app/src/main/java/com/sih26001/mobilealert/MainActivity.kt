@@ -14,6 +14,7 @@ import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import com.sih26001.mobilealert.core.alarm.AlarmControllerImpl
 import com.sih26001.mobilealert.core.navigation.AppNavigation
@@ -70,15 +71,17 @@ class MainActivity : ComponentActivity() {
         checkIntentForAlertId(intent)
 
         setContent {
-            SIH26001MobileAlertTheme {
-                val controller = androidx.navigation.compose.rememberNavController()
-                navController = controller
-                androidx.compose.runtime.LaunchedEffect(controller) {
-                    if (intent.data != null) {
-                        controller.handleDeepLink(intent)
+            com.sih26001.mobilealert.core.util.ProvideAppLocale {
+                SIH26001MobileAlertTheme {
+                    val controller = androidx.navigation.compose.rememberNavController()
+                    navController = controller
+                    androidx.compose.runtime.LaunchedEffect(controller) {
+                        if (intent.data != null) {
+                            controller.handleDeepLink(intent)
+                        }
                     }
+                    AppNavigation(navController = controller)
                 }
-                AppNavigation(navController = controller)
             }
         }
     }
@@ -91,14 +94,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun retrieveFcmToken() {
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            if (!task.isSuccessful) {
-                Log.w(TAG, "Fetching FCM registration token failed: ${task.exception?.message}")
-                return@addOnCompleteListener
+        try {
+            if (FirebaseApp.getApps(this).isNotEmpty()) {
+                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                    if (!task.isSuccessful) {
+                        Log.w(TAG, "Fetching FCM registration token failed: ${task.exception?.message}")
+                        return@addOnCompleteListener
+                    }
+                    val token = task.result
+                    val preview = if (token != null && token.length > 8) "${token.take(4)}...${token.takeLast(4)}" else "***"
+                    Log.i(TAG, "FCM token retrieved (length=${token?.length ?: 0}, preview=$preview)")
+                }
+            } else {
+                Log.w(TAG, "Firebase not initialized. Skipping FCM token retrieval.")
             }
-            val token = task.result
-            val preview = if (token != null && token.length > 8) "${token.take(4)}...${token.takeLast(4)}" else "***"
-            Log.i(TAG, "FCM token retrieved (length=${token?.length ?: 0}, preview=$preview)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing Firebase/FCM: ${e.message}")
         }
     }
 

@@ -8,6 +8,8 @@ object Constants {
     const val ROUTE_HOME = "home"
     const val ROUTE_ALERTS = "alerts"
     const val ROUTE_HISTORY = "history"
+    const val ROUTE_SAFE_PLACE = "safe_place"
+    const val ROUTE_ROUTE = "route"
 
     // Notification Channel IDs (Phase 1 contract specification per Rule 9)
     const val CHANNEL_ID_NORMAL = "channel_alert_normal"

@@ -34,4 +34,7 @@ interface AlertDao {
 
     @Query("UPDATE alerts SET acknowledgedAt = :timestamp WHERE alertId = :id")
     fun updateAcknowledgedAt(id: String, timestamp: Instant)
+
+    @Query("DELETE FROM alerts")
+    fun deleteAllAlerts()
 }

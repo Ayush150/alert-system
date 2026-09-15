@@ -1,24 +1,89 @@
 <resources>
-    <string name="app_name">SIH26001 Mobile Alert</string>
-    <string name="app_description">Early-warning emergency client designed to receive and display verified landslide alerts from the SIH26001 backend system.</string>
-    <string name="prototype_badge">Prototype Foundation (Phase 1)</string>
-    <string name="prototype_notice">Architecture skeleton and standby mode. Backend push and local persistence will be connected in subsequent phases.</string>
+    <string name="app_name">SIXTH SENSE</string>
+    <string name="app_tagline">See the Risk Before the Ground Moves.</string>
     
+    <!-- Navigation -->
     <string name="nav_home">Home</string>
-    <string name="nav_alerts">Active Alerts</string>
-    <string name="nav_history">Alert History</string>
-    <string name="nav_back">Navigate back</string>
-
-    <string name="btn_view_alerts">View Active Alerts</string>
-    <string name="btn_view_history">View Alert History</string>
-
-    <string name="alerts_title">Active Alerts</string>
-    <string name="alerts_empty_title">No active alerts</string>
-    <string name="alerts_empty_subtitle">No active landslide warnings have been issued for your monitored zones.</string>
-
+    <string name="nav_alerts">Alerts</string>
+    <string name="nav_history">History</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_back">Back</string>
+    
+    <!-- Status & Alerts Header -->
+    <string name="default_location">Shillong</string>
+    <string name="label_current_area">Your Area</string>
+    <string name="status_normal_title">NO ACTIVE WARNING</string>
+    <string name="status_normal_subtitle">Your area is currently clear.</string>
+    
+    <!-- Two-Phase Alert System -->
+    <string name="alert_warning_title">WARNING</string>
+    <string name="alert_warning_subtitle">Landslide risk detected nearby</string>
+    <string name="alert_high_title">HIGH ALERT</string>
+    <string name="alert_high_subtitle">Landslide danger nearby</string>
+    
+    <!-- 5 Core Questions -->
+    <string name="question_what_happened">WHAT HAPPENED?</string>
+    <string name="question_why">WHY?</string>
+    <string name="question_what_to_do">WHAT SHOULD YOU DO?</string>
+    <string name="question_where_to_go">WHERE SHOULD I GO?</string>
+    <string name="question_how_to_get_there">HOW DO I GET THERE?</string>
+    
+    <!-- Default instructions when backend doesn't specify -->
+    <string name="warning_instruction_default">Stay away from steep slopes and avoid travelling toward the affected area.</string>
+    <string name="high_alert_instruction_default">Move away from the affected area and go to a safe location.</string>
+    
+    <!-- Primary Actions -->
+    <string name="action_find_safe_place">FIND SAFE PLACE</string>
+    <string name="action_evacuate_now">EVACUATE NOW</string>
+    <string name="action_go_there">GO THERE</string>
+    <string name="action_start_navigation">START NAVIGATION</string>
+    <string name="action_silence">SILENCE ALARM</string>
+    <string name="action_acknowledge">ACKNOWLEDGE</string>
+    <string name="action_acknowledging">ACKNOWLEDGING…</string>
+    <string name="action_acknowledged">OPERATIONALLY ACKNOWLEDGED</string>
+    <string name="action_view_details">VIEW ALERT DETAILS</string>
+    
+    <!-- Safe Place Screen -->
+    <string name="safe_place_title">Nearest Safe Location</string>
+    <string name="safe_place_verified_label">Verified Location</string>
+    <string name="safe_place_unavailable">Safe location information is currently unavailable.</string>
+    
+    <!-- Route Screen -->
+    <string name="route_title">Safe Evacuation Route</string>
+    <string name="route_origin">YOU</string>
+    <string name="route_destination">SAFE LOCATION</string>
+    <string name="route_unavailable">Route safety information is currently unavailable.</string>
+    <string name="route_road_closed_warning">Caution: Authoritative road disruptions detected on route</string>
+    
+    <!-- Operational / Offline / Data Integrity -->
+    <string name="data_unavailable">Information unavailable</string>
+    <string name="why_unavailable">Some environmental information is currently unavailable.</string>
+    <string name="offline_notice">Connection unavailable. Showing last available information.</string>
+    <string name="last_updated_prefix">Last updated: %1$s</string>
+    <string name="silence_notice">Alarm is silenced locally. Operational acknowledgement is required.</string>
+    <string name="sync_pending_notice">Acknowledgement recorded locally. Will sync with authoritative server once connected.</string>
+    
+    <!-- History & Lists -->
     <string name="history_title">Alert History</string>
-    <string name="history_empty_title">No alert history</string>
-    <string name="history_empty_subtitle">Archived, expired, and acknowledged warnings will appear here.</string>
-
-    <string name="status_standby">System Status: Standby</string>
+    <string name="history_empty_title">No Alert History</string>
+    <string name="history_empty_subtitle">Past acknowledged or expired warnings will appear here.</string>
+    <string name="alerts_title">Active Alerts</string>
+    <string name="alerts_empty_title">No Active Alerts</string>
+    <string name="alerts_empty_subtitle">No active landslide warnings have been issued for your monitored zones.</string>
+    
+    <!-- Settings & Languages -->
+    <string name="settings_title">Settings</string>
+    <string name="language_title">Language</string>
+    <string name="lang_en">English</string>
+    <string name="lang_hi">हिंदी (Hindi)</string>
+    <string name="lang_as">অসমীয়া (Assamese)</string>
+    <string name="about_title">About SIXTH SENSE</string>
+    <string name="about_desc">SIXTH SENSE Mobile Alert is an authoritative last-mile emergency response app providing rapid warning and evacuation decision guidance for high-risk landslide regions.</string>
+    
+    <!-- Simulation / Demo Protocol -->
+    <string name="demo_title">Simulation / Demo Protocol</string>
+    <string name="demo_normal">NORMAL</string>
+    <string name="demo_warning">WARNING</string>
+    <string name="demo_high_alert">HIGH ALERT</string>
+    <string name="demo_clear">CLEAR</string>
 </resources>
