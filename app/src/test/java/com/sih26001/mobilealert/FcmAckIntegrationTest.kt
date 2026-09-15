@@ -188,6 +188,9 @@ class FcmAckIntegrationTest {
                 map.value = cur
             }
         }
+        override fun deleteAllAlerts() {
+            map.value = emptyMap()
+        }
     }
 
     private class FakeTestPendingAckDao : PendingAckDao {
