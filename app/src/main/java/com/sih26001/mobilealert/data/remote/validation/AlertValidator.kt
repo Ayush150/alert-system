@@ -19,6 +19,16 @@ object AlertValidator {
         data class Invalid(val reasons: List<String>) : Result
     }
 
+    private val VALID_SEVERITIES = setOf(
+        "NORMAL", "HIGH", "CRITICAL",
+        "LOW", "MODERATE"
+    )
+
+    private val VALID_STATUSES = setOf(
+        "RECEIVED", "DISPLAYED", "ACTIVE", "SILENCED", "ACKNOWLEDGED", "EXPIRED",
+        "WATCH", "RESOLVED", "ESCALATED"
+    )
+
     fun validate(dto: AlertDto): Result {
         val errors = mutableListOf<String>()
 
@@ -32,14 +42,13 @@ object AlertValidator {
             errors.add("event_type is missing or blank")
         }
 
-        // 3. severity must match NORMAL, HIGH, or CRITICAL
+        // 3. severity must match recognized values (NORMAL, HIGH, CRITICAL, LOW, MODERATE)
         if (dto.severity.isNullOrBlank()) {
             errors.add("severity is missing")
         } else {
             val normalizedSeverity = dto.severity.uppercase()
-            val isValidSeverity = AlertSeverity.values().any { it.name == normalizedSeverity }
-            if (!isValidSeverity) {
-                errors.add("severity '${dto.severity}' is not a recognized AlertSeverity (expected NORMAL, HIGH, CRITICAL)")
+            if (normalizedSeverity !in VALID_SEVERITIES) {
+                errors.add("severity '${dto.severity}' is not a recognized AlertSeverity (expected NORMAL, HIGH, CRITICAL, LOW, MODERATE)")
             }
         }
 
@@ -77,11 +86,10 @@ object AlertValidator {
             }
         }
 
-        // 7. status (if present) must be a recognized AlertStatus
+        // 7. status (if present) must be a recognized AlertStatus or compatible Sixth Sense status
         if (!dto.status.isNullOrBlank()) {
             val normalizedStatus = dto.status.uppercase()
-            val isValidStatus = AlertStatus.values().any { it.name == normalizedStatus }
-            if (!isValidStatus) {
+            if (normalizedStatus !in VALID_STATUSES) {
                 errors.add("status '${dto.status}' is not a recognized AlertStatus")
             }
         }

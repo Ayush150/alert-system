@@ -265,6 +265,7 @@ class AlertDomainTest {
             override fun insertAlert(alert: com.sih26001.mobilealert.data.local.AlertEntity) {}
             override fun updateStatus(id: String, status: AlertStatus) {}
             override fun updateAcknowledgedAt(id: String, timestamp: Instant) {}
+            override fun deleteAllAlerts() {}
         }
         val fakePendingAckDao = object : com.sih26001.mobilealert.data.local.PendingAckDao {
             override fun observePendingAcks() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>())
@@ -297,6 +298,7 @@ class AlertDomainTest {
             override fun insertAlert(alert: com.sih26001.mobilealert.data.local.AlertEntity) {}
             override fun updateStatus(id: String, status: AlertStatus) {}
             override fun updateAcknowledgedAt(id: String, timestamp: Instant) {}
+            override fun deleteAllAlerts() {}
         }
         val fakePendingAckDao = object : com.sih26001.mobilealert.data.local.PendingAckDao {
             override fun observePendingAcks() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>())
@@ -313,5 +315,222 @@ class AlertDomainTest {
 
         val historyAlerts = useCase().first()
         assertTrue(historyAlerts.isEmpty())
+    }
+
+    // =========================================================================
+    // Phase 7A: Sixth Sense Alert Contract Normalization Tests
+    // =========================================================================
+
+    @Test
+    fun sixthSenseLowSeverity_isAcceptedAndMapsToNormal() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-001",
+            event_type = "landslide",
+            severity = "LOW",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("LOW severity should be accepted", result is AlertValidator.Result.Valid)
+
+        val alert = AlertMapper.toDomain((result as AlertValidator.Result.Valid).dto)
+        assertEquals(AlertSeverity.NORMAL, alert.severity)
+    }
+
+    @Test
+    fun sixthSenseModerateSeverity_isAcceptedAndMapsToNormal() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-002",
+            event_type = "landslide",
+            severity = "MODERATE",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("MODERATE severity should be accepted", result is AlertValidator.Result.Valid)
+
+        val alert = AlertMapper.toDomain((result as AlertValidator.Result.Valid).dto)
+        assertEquals(AlertSeverity.NORMAL, alert.severity)
+    }
+
+    @Test
+    fun highSeverity_mapsToHigh() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-003",
+            event_type = "landslide",
+            severity = "HIGH",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("HIGH severity should be accepted", result is AlertValidator.Result.Valid)
+
+        val alert = AlertMapper.toDomain((result as AlertValidator.Result.Valid).dto)
+        assertEquals(AlertSeverity.HIGH, alert.severity)
+    }
+
+    @Test
+    fun criticalSeverity_mapsToCritical() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-004",
+            event_type = "landslide",
+            severity = "CRITICAL",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("CRITICAL severity should be accepted", result is AlertValidator.Result.Valid)
+
+        val alert = AlertMapper.toDomain((result as AlertValidator.Result.Valid).dto)
+        assertEquals(AlertSeverity.CRITICAL, alert.severity)
+    }
+
+    @Test
+    fun unknownSeverity_remainsRejected() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-005",
+            event_type = "landslide",
+            severity = "CATASTROPHIC_UNKNOWN",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("Unknown severity should be rejected", result is AlertValidator.Result.Invalid)
+    }
+
+    @Test
+    fun activeStatus_isAcceptedAndMapsToActive() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-006",
+            event_type = "landslide",
+            severity = "HIGH",
+            status = "ACTIVE",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("ACTIVE status should be accepted", result is AlertValidator.Result.Valid)
+
+        val alert = AlertMapper.toDomain((result as AlertValidator.Result.Valid).dto)
+        assertEquals(AlertStatus.ACTIVE, alert.status)
+    }
+
+    @Test
+    fun sixthSenseWatchStatus_isAcceptedAndMapsToActive() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-007",
+            event_type = "landslide",
+            severity = "MODERATE",
+            status = "WATCH",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("WATCH status should be accepted", result is AlertValidator.Result.Valid)
+
+        val alert = AlertMapper.toDomain((result as AlertValidator.Result.Valid).dto)
+        assertEquals(AlertStatus.ACTIVE, alert.status)
+        assertEquals(AlertSeverity.NORMAL, alert.severity)
+    }
+
+    @Test
+    fun sixthSenseResolvedStatus_isAcceptedAndMapsToExpired() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-008",
+            event_type = "landslide",
+            severity = "LOW",
+            status = "RESOLVED",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("RESOLVED status should be accepted", result is AlertValidator.Result.Valid)
+
+        val alert = AlertMapper.toDomain((result as AlertValidator.Result.Valid).dto)
+        assertEquals(AlertStatus.EXPIRED, alert.status)
+        assertEquals(AlertSeverity.NORMAL, alert.severity)
+    }
+
+    @Test
+    fun sixthSenseEscalatedStatus_isAcceptedAndMapsToActive() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-009",
+            event_type = "landslide",
+            severity = "HIGH",
+            status = "ESCALATED",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("ESCALATED status should be accepted", result is AlertValidator.Result.Valid)
+
+        val alert = AlertMapper.toDomain((result as AlertValidator.Result.Valid).dto)
+        assertEquals(AlertStatus.ACTIVE, alert.status)
+        assertEquals(AlertSeverity.HIGH, alert.severity)
+    }
+
+    @Test
+    fun existingMobileAlertStatuses_areAcceptedAndMappedCorrectly() {
+        val testCases = mapOf(
+            "RECEIVED" to AlertStatus.RECEIVED,
+            "DISPLAYED" to AlertStatus.DISPLAYED,
+            "ACTIVE" to AlertStatus.ACTIVE,
+            "SILENCED" to AlertStatus.SILENCED,
+            "ACKNOWLEDGED" to AlertStatus.ACKNOWLEDGED,
+            "EXPIRED" to AlertStatus.EXPIRED
+        )
+
+        for ((statusStr, expectedStatus) in testCases) {
+            val dto = AlertDto(
+                alert_id = "ALT-STATUS-$statusStr",
+                event_type = "landslide",
+                severity = "NORMAL",
+                status = statusStr,
+                issued_at = "2026-09-18T10:00:00Z"
+            )
+            val result = AlertValidator.validate(dto)
+            assertTrue("Status $statusStr should be accepted", result is AlertValidator.Result.Valid)
+
+            val alert = AlertMapper.toDomain((result as AlertValidator.Result.Valid).dto)
+            assertEquals(expectedStatus, alert.status)
+        }
+    }
+
+    @Test
+    fun unknownStatus_remainsRejected() {
+        val dto = AlertDto(
+            alert_id = "ALT-SS-010",
+            event_type = "landslide",
+            severity = "HIGH",
+            status = "TOTALLY_UNKNOWN_STATUS",
+            issued_at = "2026-09-18T10:00:00Z"
+        )
+        val result = AlertValidator.validate(dto)
+        assertTrue("Unknown status should be rejected", result is AlertValidator.Result.Invalid)
+    }
+
+    @Test
+    fun fullSixthSenseDtoPipeline_passesWithoutExceptions() {
+        val sixthSenseDto = AlertDto(
+            alert_id = "ALT-TAW-1726665000-A1B2",
+            event_type = "LANDSLIDE_WARNING",
+            severity = "HIGH",
+            risk_score = 78.5,
+            location = LocationDto(name = "Tawang", latitude = 27.5861, longitude = 91.8694),
+            issued_at = "2026-09-18T14:15:00+00:00",
+            expires_at = null,
+            top_drivers = listOf("Rainfall threshold exceeded", "Ground movement anomalous"),
+            recommended_action = "Notify district administration",
+            affected_assets = listOf(com.sih26001.mobilealert.data.remote.dto.AffectedAssetDto(type = "infrastructure", identifier = "NH-13")),
+            source = "risk_fusion",
+            data_quality = "FULL",
+            requires_ack = true,
+            status = "ACTIVE"
+        )
+
+        val validationResult = AlertValidator.validate(sixthSenseDto)
+        assertTrue(validationResult is AlertValidator.Result.Valid)
+
+        val validDto = (validationResult as AlertValidator.Result.Valid).dto
+        val domainAlert = AlertMapper.toDomain(validDto)
+
+        assertEquals("ALT-TAW-1726665000-A1B2", domainAlert.alertId)
+        assertEquals("LANDSLIDE_WARNING", domainAlert.eventType)
+        assertEquals(AlertSeverity.HIGH, domainAlert.severity)
+        assertEquals(78.5, domainAlert.riskScore!!, 0.001)
+        assertEquals("Tawang", domainAlert.location?.name)
+        assertEquals(AlertStatus.ACTIVE, domainAlert.status)
+        assertEquals(true, domainAlert.requiresAck)
     }
 }

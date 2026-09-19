@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
                         return@addOnCompleteListener
                     }
                     val token = task.result
-                    val preview = if (token != null && token.length > 8) "${token.take(4)}...${token.takeLast(4)}" else "***"
+                    val preview = com.sih26001.mobilealert.data.fcm.SihFirebaseMessagingService.maskToken(token)
                     Log.i(TAG, "FCM token retrieved (length=${token?.length ?: 0}, preview=$preview)")
                 }
             } else {

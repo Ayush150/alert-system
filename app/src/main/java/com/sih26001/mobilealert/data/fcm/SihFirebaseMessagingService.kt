@@ -10,12 +10,21 @@ class SihFirebaseMessagingService : FirebaseMessagingService() {
         private const val TAG = "SihFirebaseMessaging"
         // Shared processor instance for deduplication across incoming messages
         val processor = FcmMessageProcessor()
+
+        /**
+         * Masks sensitive FCM registration token for safe diagnostic logging.
+         * Never emits the full token or sensitive interior characters.
+         */
+        fun maskToken(token: String?): String {
+            if (token.isNullOrEmpty()) return "***"
+            return if (token.length > 8) "${token.take(4)}...${token.takeLast(4)}" else "***"
+        }
     }
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         // Development-safe log confirming token refresh without exposing the full token
-        val preview = if (token.length > 8) "${token.take(4)}...${token.takeLast(4)}" else "***"
+        val preview = maskToken(token)
         Log.i(TAG, "FCM token refreshed (length=${token.length}, preview=$preview)")
     }
 

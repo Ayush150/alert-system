@@ -16,17 +16,22 @@ import java.time.Instant
 object AlertMapper {
 
     fun toDomain(dto: AlertDto): Alert {
-        val severity = dto.severity?.let {
-            AlertSeverity.valueOf(it.uppercase())
-        } ?: AlertSeverity.NORMAL
+        val severity = when (dto.severity?.uppercase()) {
+            "CRITICAL" -> AlertSeverity.CRITICAL
+            "HIGH" -> AlertSeverity.HIGH
+            "NORMAL", "LOW", "MODERATE" -> AlertSeverity.NORMAL
+            else -> AlertSeverity.NORMAL
+        }
 
-        val status = dto.status?.let {
-            try {
-                AlertStatus.valueOf(it.uppercase())
-            } catch (e: IllegalArgumentException) {
-                AlertStatus.ACTIVE
-            }
-        } ?: AlertStatus.ACTIVE
+        val status = when (dto.status?.uppercase()) {
+            "RECEIVED" -> AlertStatus.RECEIVED
+            "DISPLAYED" -> AlertStatus.DISPLAYED
+            "ACTIVE", "WATCH", "ESCALATED" -> AlertStatus.ACTIVE
+            "SILENCED" -> AlertStatus.SILENCED
+            "ACKNOWLEDGED" -> AlertStatus.ACKNOWLEDGED
+            "EXPIRED", "RESOLVED" -> AlertStatus.EXPIRED
+            else -> AlertStatus.ACTIVE
+        }
 
         val location = dto.location?.let { loc ->
             Location(

@@ -17,6 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -106,7 +107,33 @@ class FcmAlertTriggerHandlerTest {
         handler.handleAlertTrigger("ALT-FAIL")
         advanceUntilIdle()
 
-        verify(mockAlertRepository).refreshAlert("ALT-FAIL")
+        verify(mockAlertRepository, atLeastOnce()).refreshAlert("ALT-FAIL")
+        verify(mockNotificationManager, never()).showAlertNotification(any())
+        verify(mockAlarmController, never()).startAlarm(any())
+    }
+
+    @Test
+    fun `handleAlertTrigger when validation fails never calls showAlertNotification`() = testScope.runTest {
+        whenever(mockAlertRepository.refreshAlert("ALT-INVALID"))
+            .thenReturn(Result.failure(IllegalArgumentException("Validation failed: severity is missing")))
+
+        handler.handleAlertTrigger("ALT-INVALID")
+        advanceUntilIdle()
+
+        verify(mockAlertRepository).refreshAlert("ALT-INVALID")
+        verify(mockNotificationManager, never()).showAlertNotification(any())
+        verify(mockAlarmController, never()).startAlarm(any())
+    }
+
+    @Test
+    fun `handleAlertTrigger when alert ID is unknown never calls showAlertNotification`() = testScope.runTest {
+        whenever(mockAlertRepository.refreshAlert("ALT-UNKNOWN"))
+            .thenReturn(Result.failure(NoSuchElementException("Alert ALT-UNKNOWN not found")))
+
+        handler.handleAlertTrigger("ALT-UNKNOWN")
+        advanceUntilIdle()
+
+        verify(mockAlertRepository, atLeastOnce()).refreshAlert("ALT-UNKNOWN")
         verify(mockNotificationManager, never()).showAlertNotification(any())
         verify(mockAlarmController, never()).startAlarm(any())
     }

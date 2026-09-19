@@ -1,65 +1,148 @@
 package com.sih26001.mobilealert.core.notification
 
+import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.sih26001.mobilealert.R
 import com.sih26001.mobilealert.core.util.Constants
 import com.sih26001.mobilealert.domain.model.Alert
 import com.sih26001.mobilealert.domain.model.AlertSeverity
+import com.sih26001.mobilealert.domain.model.Location
+import java.util.Locale
 
 interface AlertNotificationManager {
     fun showAlertNotification(alert: Alert)
     fun cancelAlertNotification(alertId: String)
 }
 
-class AlertNotificationManagerImpl(private val context: Context) : AlertNotificationManager {
+class AlertNotificationManagerImpl(
+    private val context: Context,
+    private val notificationManager: NotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+) : AlertNotificationManager {
 
-    private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    companion object {
+        private const val TAG = "AlertNotificationManager"
 
-    override fun showAlertNotification(alert: Alert) {
-        val channelId = when (alert.severity) {
+        fun getChannelIdForSeverity(severity: AlertSeverity): String = when (severity) {
             AlertSeverity.NORMAL -> Constants.CHANNEL_ID_NORMAL
             AlertSeverity.HIGH -> Constants.CHANNEL_ID_HIGH
             AlertSeverity.CRITICAL -> Constants.CHANNEL_ID_CRITICAL
         }
 
-        // Create deep link intent to ActiveAlarmScreen
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("sih26001://alert/${alert.alertId}")).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        fun getPriorityForSeverity(severity: AlertSeverity): Int = when (severity) {
+            AlertSeverity.CRITICAL -> NotificationCompat.PRIORITY_MAX
+            AlertSeverity.HIGH -> NotificationCompat.PRIORITY_HIGH
+            else -> NotificationCompat.PRIORITY_DEFAULT
         }
 
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            alert.alertId.hashCode(), // Deterministic request code
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        fun formatRiskScore(riskScore: Double?): String {
+            return riskScore?.let { score ->
+                "Risk Score: ${String.format(Locale.US, "%.1f%%", score)}"
+            } ?: "Risk score unavailable"
+        }
 
-        val riskText = alert.riskScore?.let { score ->
-            "Risk score: ${(score * 100).toInt()}/100"
-        } ?: "Risk score unavailable"
+        fun formatLocation(location: Location?): String? {
+            if (location == null) return null
+            val name = location.name?.trim()?.takeIf { it.isNotEmpty() }
+            val hasCoords = location.latitude != null && location.longitude != null
 
-        val contentText = buildString {
-            if (alert.location != null) {
-                append("Location: ${alert.location.latitude}, ${alert.location.longitude}\n")
+            return when {
+                name != null && hasCoords ->
+                    "Location: $name\nCoordinates: ${location.latitude}, ${location.longitude}"
+                name != null ->
+                    "Location: $name"
+                hasCoords ->
+                    "Location: ${location.latitude}, ${location.longitude}"
+                else -> null
             }
-            append(riskText)
         }
+
+        fun formatContentText(alert: Alert): String {
+            val locationText = formatLocation(alert.location)
+            val riskText = formatRiskScore(alert.riskScore)
+
+            return buildString {
+                if (!locationText.isNullOrBlank()) {
+                    append(locationText)
+                    append("\n")
+                }
+                append(riskText)
+            }
+        }
+
+        fun getDeepLinkUriString(alertId: String): String {
+            return "sih26001://alert/$alertId"
+        }
+
+        fun getDeepLinkUri(alertId: String): Uri {
+            return Uri.parse(getDeepLinkUriString(alertId))
+        }
+
+        fun getNotificationId(alertId: String): Int {
+            return alertId.hashCode()
+        }
+
+        fun createDeepLinkIntent(alertId: String): Intent {
+            return Intent(Intent.ACTION_VIEW, getDeepLinkUri(alertId)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        }
+    }
+
+    override fun showAlertNotification(alert: Alert) {
+        val channelId = getChannelIdForSeverity(alert.severity)
+
+        // Defensive channel existence check
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                if (notificationManager.getNotificationChannel(channelId) == null) {
+                    Log.w(TAG, "Notification channel $channelId does not exist. Re-initializing channels...")
+                    NotificationChannels.createChannels(context)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Defensive channel check failed for channel $channelId: ${e.message}")
+            }
+        }
+
+        val notification = buildNotification(alert, channelId)
+        val notificationId = getNotificationId(alert.alertId)
+
+        // Defensive notification posting
+        try {
+            notificationManager.notify(notificationId, notification)
+            Log.i(TAG, "Posted notification for alert_id=${alert.alertId} (id=$notificationId) on channel=$channelId")
+        } catch (e: SecurityException) {
+            Log.w(TAG, "POST_NOTIFICATIONS permission denied or revoked; cannot post notification for alert_id=${alert.alertId}: ${e.message}")
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to post notification for alert_id=${alert.alertId}: ${e.message}", e)
+        }
+    }
+
+    override fun cancelAlertNotification(alertId: String) {
+        val notificationId = getNotificationId(alertId)
+        try {
+            notificationManager.cancel(notificationId)
+            Log.i(TAG, "Cancelled notification for alert_id=$alertId (id=$notificationId)")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to cancel notification for alert_id=$alertId: ${e.message}")
+        }
+    }
+
+    fun buildNotification(alert: Alert, channelId: String = getChannelIdForSeverity(alert.severity)): Notification {
+        val pendingIntent = createPendingIntent(alert.alertId)
+        val contentText = formatContentText(alert)
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert) // using android system icon as placeholder
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("${alert.severity.name} ${alert.eventType}")
             .setContentText(contentText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("${contentText}\n\n${alert.recommendedAction ?: ""}"))
-            .setPriority(when (alert.severity) {
-                AlertSeverity.CRITICAL -> NotificationCompat.PRIORITY_MAX
-                AlertSeverity.HIGH -> NotificationCompat.PRIORITY_HIGH
-                else -> NotificationCompat.PRIORITY_DEFAULT
-            })
+            .setStyle(NotificationCompat.BigTextStyle().bigText("$contentText\n\n${alert.recommendedAction ?: ""}"))
+            .setPriority(getPriorityForSeverity(alert.severity))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
@@ -68,11 +151,16 @@ class AlertNotificationManagerImpl(private val context: Context) : AlertNotifica
             builder.setCategory(NotificationCompat.CATEGORY_ALARM)
         }
 
-        // Use alertId hash as deterministic notification ID
-        notificationManager.notify(alert.alertId.hashCode(), builder.build())
+        return builder.build()
     }
 
-    override fun cancelAlertNotification(alertId: String) {
-        notificationManager.cancel(alertId.hashCode())
+    private fun createPendingIntent(alertId: String): PendingIntent {
+        val intent = createDeepLinkIntent(alertId)
+        return PendingIntent.getActivity(
+            context,
+            getNotificationId(alertId),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 }

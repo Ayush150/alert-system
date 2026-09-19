@@ -12,7 +12,7 @@ object EnvironmentConfig {
     val BASE_URL: String
         get() = when (CURRENT_ENV) {
             // Address for accessing a mock server running on host machine from emulator via adb reverse
-            Environment.DEBUG -> "http://127.0.0.1:8080/"
+            Environment.DEBUG -> "http://10.0.2.2:8000/"
             
             // Placeholders for staging and production backends
             Environment.STAGING -> "https://staging.api.placeholder.com/"

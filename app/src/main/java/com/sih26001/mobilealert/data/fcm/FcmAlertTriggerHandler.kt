@@ -22,7 +22,10 @@ class FcmAlertTriggerHandlerImpl(
     private val alertRepository: AlertRepository,
     private val notificationManager: AlertNotificationManager,
     private val alarmController: AlarmController,
-    private val coroutineScope: CoroutineScope
+    private val coroutineScope: CoroutineScope,
+    private val maxRetries: Int = 3,
+    private val initialDelayMs: Long = 1000L,
+    private val backoffMultiplier: Double = 2.0
 ) : FcmAlertTriggerHandler {
 
     companion object {
@@ -31,30 +34,54 @@ class FcmAlertTriggerHandlerImpl(
 
     override fun handleAlertTrigger(alertId: String) {
         coroutineScope.launch {
-            Log.i(TAG, "Authoritative fetch started for alert_id=$alertId")
-            val result = alertRepository.refreshAlert(alertId)
+            var attempt = 0
+            var currentDelayMs = initialDelayMs
+            var lastError: Throwable? = null
 
-            result.onSuccess { alert ->
-                Log.i(TAG, "Authoritative fetch succeeded for alert_id=$alertId")
-                Log.i(TAG, "Alert persisted for alert_id=$alertId")
+            while (attempt <= maxRetries) {
+                attempt++
+                Log.i(TAG, "Authoritative fetch started for alert_id=$alertId (attempt $attempt/${maxRetries + 1})")
+                val result = alertRepository.refreshAlert(alertId)
 
-                if (alert.status != AlertStatus.EXPIRED) {
-                    notificationManager.showAlertNotification(alert)
+                if (result.isSuccess) {
+                    val alert = result.getOrThrow()
+                    Log.i(TAG, "Authoritative fetch succeeded for alert_id=$alertId on attempt $attempt")
+                    Log.i(TAG, "Alert persisted for alert_id=$alertId")
 
-                    // Severity-based alarm condition: only HIGH and CRITICAL trigger audible/vibration alarm
-                    if (alert.status == AlertStatus.ACTIVE &&
-                        alert.severity in setOf(AlertSeverity.HIGH, AlertSeverity.CRITICAL)
-                    ) {
-                        alarmController.startAlarm(alert)
+                    if (alert.status != AlertStatus.EXPIRED) {
+                        notificationManager.showAlertNotification(alert)
+
+                        // Severity-based alarm condition: only HIGH and CRITICAL trigger audible/vibration alarm
+                        if (alert.status == AlertStatus.ACTIVE &&
+                            alert.severity in setOf(AlertSeverity.HIGH, AlertSeverity.CRITICAL)
+                        ) {
+                            alarmController.startAlarm(alert)
+                        } else {
+                            Log.d(TAG, "Alert $alertId is ${alert.severity}, skipping emergency alarm")
+                        }
                     } else {
-                        Log.d(TAG, "Alert $alertId is ${alert.severity}, skipping emergency alarm")
+                        Log.d(TAG, "Alert $alertId is expired, skipping notification and alarm")
                     }
-                } else {
-                    Log.d(TAG, "Alert $alertId is expired, skipping notification and alarm")
+                    return@launch
                 }
-            }.onFailure { error ->
-                Log.w(TAG, "Authoritative fetch failed for alert_id=$alertId: ${error.message}")
+
+                val error = result.exceptionOrNull()
+                lastError = error
+
+                // Non-recoverable validation failures must abort immediately without wasting retries
+                if (error is IllegalArgumentException) {
+                    Log.w(TAG, "Authoritative fetch rejected for alert_id=$alertId due to validation error: ${error.message}. Aborting retries.")
+                    return@launch
+                }
+
+                if (attempt <= maxRetries) {
+                    Log.w(TAG, "Authoritative fetch attempt $attempt failed for alert_id=$alertId: ${error?.message}. Retrying in ${currentDelayMs}ms...")
+                    kotlinx.coroutines.delay(currentDelayMs)
+                    currentDelayMs = (currentDelayMs * backoffMultiplier).toLong()
+                }
             }
+
+            Log.w(TAG, "Authoritative fetch permanently failed after ${maxRetries + 1} attempts for alert_id=$alertId: ${lastError?.message}")
         }
     }
 }
