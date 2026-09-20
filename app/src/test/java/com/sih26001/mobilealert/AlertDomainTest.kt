@@ -255,6 +255,14 @@ class AlertDomainTest {
     fun alertRepositoryImpl_returnsEmptyActiveAlertsInitially() = runBlocking {
         val fakeApi = object : com.sih26001.mobilealert.data.remote.api.AlertApiService {
             override suspend fun getAlerts() = emptyList<AlertDto>()
+            override suspend fun getActiveAlerts() = emptyList<AlertDto>()
+            override suspend fun getAlertById(alertId: String): AlertDto = throw NoSuchElementException()
+            override suspend fun acknowledgeAlert(alertId: String, request: com.sih26001.mobilealert.data.remote.dto.AckRequestDto?) =
+                com.sih26001.mobilealert.data.remote.dto.AckResponseDto(alert_id = alertId, status = "ACKNOWLEDGED")
+            override suspend fun silenceAlarm() =
+                com.sih26001.mobilealert.data.remote.dto.SilenceResponseDto(status = "SILENCED", is_muted = true)
+            override suspend fun getAlarmStatus() = com.sih26001.mobilealert.data.remote.dto.AlarmStatusDto()
+            override suspend fun getSystemStatus() = com.sih26001.mobilealert.data.remote.dto.SystemStatusDto()
         }
         val fakeDao = object : com.sih26001.mobilealert.data.local.AlertDao {
             override fun observeAllAlerts() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
@@ -266,6 +274,8 @@ class AlertDomainTest {
             override fun updateStatus(id: String, status: AlertStatus) {}
             override fun updateAcknowledgedAt(id: String, timestamp: Instant) {}
             override fun deleteAllAlerts() {}
+            override fun deleteAlertsBySource(source: String) {}
+            override fun deleteAlertsByIds(alertIds: List<String>) {}
         }
         val fakePendingAckDao = object : com.sih26001.mobilealert.data.local.PendingAckDao {
             override fun observePendingAcks() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>())
@@ -288,6 +298,14 @@ class AlertDomainTest {
     fun alertRepositoryImpl_returnsEmptyAlertHistoryInitially() = runBlocking {
         val fakeApi = object : com.sih26001.mobilealert.data.remote.api.AlertApiService {
             override suspend fun getAlerts() = emptyList<AlertDto>()
+            override suspend fun getActiveAlerts() = emptyList<AlertDto>()
+            override suspend fun getAlertById(alertId: String): AlertDto = throw NoSuchElementException()
+            override suspend fun acknowledgeAlert(alertId: String, request: com.sih26001.mobilealert.data.remote.dto.AckRequestDto?) =
+                com.sih26001.mobilealert.data.remote.dto.AckResponseDto(alert_id = alertId, status = "ACKNOWLEDGED")
+            override suspend fun silenceAlarm() =
+                com.sih26001.mobilealert.data.remote.dto.SilenceResponseDto(status = "SILENCED", is_muted = true)
+            override suspend fun getAlarmStatus() = com.sih26001.mobilealert.data.remote.dto.AlarmStatusDto()
+            override suspend fun getSystemStatus() = com.sih26001.mobilealert.data.remote.dto.SystemStatusDto()
         }
         val fakeDao = object : com.sih26001.mobilealert.data.local.AlertDao {
             override fun observeAllAlerts() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.AlertEntity>())
@@ -299,6 +317,8 @@ class AlertDomainTest {
             override fun updateStatus(id: String, status: AlertStatus) {}
             override fun updateAcknowledgedAt(id: String, timestamp: Instant) {}
             override fun deleteAllAlerts() {}
+            override fun deleteAlertsBySource(source: String) {}
+            override fun deleteAlertsByIds(alertIds: List<String>) {}
         }
         val fakePendingAckDao = object : com.sih26001.mobilealert.data.local.PendingAckDao {
             override fun observePendingAcks() = kotlinx.coroutines.flow.flowOf(emptyList<com.sih26001.mobilealert.data.local.PendingAckEntity>())

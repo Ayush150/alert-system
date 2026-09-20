@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ছিক্সথ চেন্স</string>
+    <string name="app_name">GeoAgent</string>
     <string name="app_tagline">মাটি খহি পৰাৰ পূৰ্বেই বিপদ বুজি লওক।</string>
     
     <!-- Navigation -->
@@ -14,19 +14,38 @@
     <string name="label_current_area">আপোনাৰ অঞ্চল</string>
     <string name="status_normal_title">কোনো সক্ৰিয় সতৰ্কবাৰ্তা নাই</string>
     <string name="status_normal_subtitle">আপোনাৰ অঞ্চল বৰ্তমান বিপদৰ পৰা মুক্ত।</string>
+    <string name="radar_sensor_label">লাইভ চেন্সৰ ৰাডাৰ</string>
     
     <!-- Two-Phase Alert System -->
     <string name="alert_warning_title">সতৰ্কবাৰ্তা</string>
     <string name="alert_warning_subtitle">ওচৰত ভূমিস্খলনৰ সম্ভাৱনা ধৰা পৰিছে</string>
     <string name="alert_high_title">হাই এলাৰ্ট</string>
     <string name="alert_high_subtitle">ওচৰত ভূমিস্খলনৰ অতি বিপদজনক অৱস্থা</string>
+    <string name="alert_critical_title">জৰুৰীকালীন সতৰ্কবাৰ্তা</string>
+    <string name="alert_critical_subtitle">ওচৰত তাৎক্ষণিক ভূমিস্খলনৰ জৰুৰীকালীন অৱস্থা</string>
+    
+    <!-- Emergency Full-Screen UI -->
+    <string name="hazard_landslide_detected">ভূমিস্খলনৰ বিপদ ধৰা পৰিছে</string>
+    <string name="hazard_detected_near">%1$sৰ ওচৰত বিপদ চিনাক্ত কৰা হৈছে।</string>
+    <string name="hazard_move_away_desc">চিহ্নিত বিপদজনক অঞ্চলৰ পৰা তৎকালীনভাৱে স্থানান্তৰ হওক।</string>
+    <string name="label_safe_place">সুৰক্ষিত স্থান</string>
+    <string name="label_demo_destination">ডেমো গন্তব্য (অনুকৰণ)</string>
+    <string name="action_view_safe_route">সুৰক্ষিত পথ চাওক</string>
+    <string name="siren_active">চাইৰেন সক্ৰিয় হৈছে</string>
+    <string name="siren_silenced">চাইৰেন স্তব্ধ কৰা হ’ল</string>
+    <string name="action_silence_siren">চাইৰেন স্তব্ধ কৰক</string>
+    <string name="action_im_safe_ack">মই সুৰক্ষিত / স্বীকাৰ কৰক</string>
+    <string name="action_siren_silenced_status">চাইৰেন স্থানীয়ভাৱে স্তব্ধ কৰা হৈছে। সতৰ্কবাৰ্তা সক্ৰিয় থাকিব।</string>
     
     <!-- 5 Core Questions -->
     <string name="question_what_happened">কি হ’ল?</string>
     <string name="question_why">কিয় হ’ল?</string>
+    <string name="question_where">ক’ত?</string>
     <string name="question_what_to_do">আপুনি কি কৰা উচিত?</string>
     <string name="question_where_to_go">ক’লৈ যাব?</string>
     <string name="question_how_to_get_there">তাত কেনেকৈ যাব?</string>
+    <string name="nearest_safe_location_desc">নিকটতম প্ৰমাণিত সুৰক্ষিত স্থান বা নিৰ্ধাৰিত সাহায্য কেন্দ্ৰ।</string>
+    <string name="what_happened_desc">%1$sৰ ওচৰত মাটিৰ অস্বাভাৱিক অৱস্থা ধৰা পৰিছে।</string>
     
     <!-- Default instructions -->
     <string name="warning_instruction_default">থিয় ঢালৰ পৰা আঁতৰি থাকক আৰু প্ৰভাৱিত অঞ্চললৈ যোৱাৰ পৰা বিৰত থাকক।</string>
@@ -42,6 +61,8 @@
     <string name="action_acknowledging">স্বীকাৰ কৰা হৈছে…</string>
     <string name="action_acknowledged">স্বীকৃতি সম্পন্ন হ’ল</string>
     <string name="action_view_details">সতৰ্কবাৰ্তাৰ বিৱৰণ চাওক</string>
+    <string name="action_change_role">সলনি কৰক</string>
+    <string name="role_prefix">ভূমিকা: %1$s</string>
     
     <!-- Safe Place Screen -->
     <string name="safe_place_title">নিকটতম সুৰক্ষিত স্থান</string>
@@ -58,32 +79,81 @@
     <!-- Operational / Offline / Data Integrity -->
     <string name="data_unavailable">তথ্য উপলব্ধ নহয়</string>
     <string name="why_unavailable">কিছু পৰিৱেশ সম্বন্ধীয় তথ্য বৰ্তমান উপলব্ধ নহয়।</string>
-    <string name="offline_notice">সংযোগ বিচ্ছিন্ন। শেষ উপলব্ধ তথ্য প্ৰদৰ্শন কৰা হৈছে।</string>
-    <string name="last_updated_prefix">শেষ আপডেট: %1$s</string>
-    <string name="silence_notice">এলাৰ্ম স্থানীয়ভাৱে স্তব্ধ কৰা হৈছে। প্ৰশাসনিক স্বীকৃতি বাধ্যতামূলক।</string>
-    <string name="sync_pending_notice">স্বীকৃতি স্থানীয়ভাৱে জমা কৰা হৈছে। নেটৱৰ্ক পালে চাৰ্ভাৰৰ লগত সংলগ্ন হ’ব।</string>
+    <string name="offline_notice">সংযোগ উপলব্ধ নহয়। শেহতীয়া তথ্য দেখুওৱা হৈছে।</string>
+    <string name="last_updated_prefix">শেহতীয়া আপডেট: %1$s</string>
+    <string name="silence_notice">এলাৰ্ম স্থানীয়ভাৱে স্তব্ধ কৰা হৈছে। কাৰ্য্যকৰী স্বীকৃতিৰ প্ৰয়োজন।</string>
+    <string name="sync_pending_notice">স্বীকৃতি স্থানীয়ভাৱে সংৰক্ষণ কৰা হৈছে। সংযোগ পালে চাৰ্ভাৰৰ সৈতে ছিন্ক হ’ব।</string>
+    <string name="operational_controls">কাৰ্য্যকৰী নিয়ন্ত্ৰণসমূহ</string>
     
     <!-- History & Lists -->
     <string name="history_title">সতৰ্কবাৰ্তাৰ ইতিহাস</string>
     <string name="history_empty_title">কোনো ইতিহাস নাই</string>
-    <string name="history_empty_subtitle">পূৰ্বৰ স্বীকৃত অথবা ম্যাদ উকলি যোৱা সতৰ্কবাৰ্তা ইয়াত দেখা যাব।</string>
+    <string name="history_empty_subtitle">পূৰ্বৰ স্বীকৃত বা ম্যাদ উকলি যোৱা সতৰ্কবাৰ্তা ইয়াত দেখা যাব।</string>
     <string name="alerts_title">সক্ৰিয় সতৰ্কবাৰ্তা</string>
-    <string name="alerts_empty_title">কোনো সতৰ্কবাৰ্তা নাই</string>
-    <string name="alerts_empty_subtitle">আপোনাৰ অঞ্চলৰ বাবে কোনো সক্ৰিয় ভূমিস্খলনৰ সতৰ্কবাৰ্তা নাই।</string>
+    <string name="alerts_empty_title">কোনো সক্ৰিয় সতৰ্কবাৰ্তা নাই</string>
+    <string name="alerts_empty_subtitle">আপোনাৰ অঞ্চলৰ বাবে কোনো ভূমিস্খলনৰ সতৰ্কবাৰ্তা জাৰি কৰা হোৱা নাই।</string>
+    <string name="monitored_zone_default">নজৰদাৰী অঞ্চল</string>
+    <string name="status_acknowledged">স্বীকৃত</string>
+    <string name="status_expired">ম্যাদ উকলিল</string>
+    <string name="status_silenced">স্তব্ধ (Silenced)</string>
     
     <!-- Settings & Languages -->
     <string name="settings_title">ছেটিংছ</string>
     <string name="language_title">ভাষা</string>
+    <string name="settings_language_desc">এপ্লিকেচনৰ ভাষা নিৰ্বাচন কৰক</string>
     <string name="lang_en">English</string>
-    <string name="lang_hi">हिंदी (Hindi)</string>
+    <string name="lang_hi">हिन्दी (Hindi)</string>
+    <string name="lang_mr">मराठी (Marathi)</string>
     <string name="lang_as">অসমীয়া (Assamese)</string>
-    <string name="about_title">ছিক্সথ চেন্সৰ বিষয়ে</string>
-    <string name="about_desc">ছিক্সথ চেন্স মোবাইল সতৰ্ক ব্যৱস্থা এটা আধিকাৰিক আপদকালীন ব্যৱস্থা যিয়ে ভূমিস্খলন প্ৰৱণ এলেকাত দ্রুত সকীয়নি আৰু উদ্ধাৰৰ পথ প্ৰদৰ্শন কৰে।</string>
+    <string name="about_title">GeoAgentৰ বিষয়ে</string>
+    <string name="about_desc">GeoAgent মোবাইল এলাৰ্ট হৈছে এক আধিকাৰিক জৰুৰীকালীন প্ৰতিক্ৰিয়া এপ যিয়ে ভূমিস্খলনৰ উচ্চ আশংকা থকা অঞ্চলসমূহৰ বাবে ক্ষিপ্ৰ সতৰ্কতা আৰু নিৰাপদ স্থানান্তৰৰ পথ নিৰ্দেশ কৰে।</string>
+    <string name="device_settings_title">ডিভাইচ আৰু চিষ্টেম তথ্য</string>
+    <string name="current_role_label">সক্ৰিয় ভূমিকা</string>
     
-    <!-- Simulation / Demo Protocol -->
-    <string name="demo_title">ছিমুলেচন / ডেম’ প্ৰট’কল</string>
-    <string name="demo_normal">স্বাভাৱিক</string>
-    <string name="demo_warning">সতৰ্কবাৰ্তা</string>
-    <string name="demo_high_alert">হাই এলাৰ্ট</string>
-    <string name="demo_clear">পৰিষ্কাৰ</string>
+    <!-- Role Selection -->
+    <string name="role_title">আপুনি কোন?</string>
+    <string name="role_subtitle">আগবাঢ়িবলৈ আপোনাৰ ভূমিকা নিৰ্বাচন কৰক</string>
+    <string name="role_continue">আগবাঢ়ক</string>
+    <string name="role_disclaimer">এইটো কেৱল এক ডেমো ভূমিকা নিৰ্বাচন। কোনো ব্যক্তিগত তথ্য সংগ্ৰহ বা মজুত কৰা নহয়।</string>
+    <string name="role_priority_title">আপোনাৰ ভূমিকাৰ অগ্ৰাধিকাৰ</string>
+    
+    <!-- Role Names & Descriptions -->
+    <string name="role_citizen_name">নাগৰিক</string>
+    <string name="role_citizen_desc">আপোনাৰ অঞ্চলৰ বাবে সতৰ্কবাৰ্তা আৰু স্থানান্তৰৰ নিৰ্দেশনা প্ৰাপ্ত কৰক</string>
+    <string name="role_police_name">আৰক্ষী</string>
+    <string name="role_police_desc">আইন-শৃংখলা আৰু অঞ্চল নিয়ন্ত্ৰণৰ সমন্বয় ৰাখক</string>
+    <string name="role_rescue_name">উদ্ধাৰকাৰী দল</string>
+    <string name="role_rescue_desc">প্ৰভাৱিত অঞ্চলত সন্ধান আৰু উদ্ধাৰ অভিযান চলাওক</string>
+    <string name="role_admin_name">জিলা প্ৰশাসন</string>
+    <string name="role_admin_desc">জিলাভিত্তিক দুৰ্যোগ প্ৰশমন আৰু সম্পদ বণ্টনৰ তদাৰক কৰক</string>
+    <string name="role_emergency_name">জৰুৰীকালীন সেৱা</string>
+    <string name="role_emergency_desc">জৰুৰীকালীন আন্তঃগাঁথনি আৰু চিকিৎসা সেৱা পৰিচালনা কৰক</string>
+    
+    <!-- Role Priorities -->
+    <string name="priority_active_alerts">সক্ৰিয় সতৰ্কবাৰ্তা</string>
+    <string name="priority_current_risk">বৰ্তমানৰ বিপদ</string>
+    <string name="priority_safe_places">সুৰক্ষিত স্থানসমূহ</string>
+    <string name="priority_report_hazard">বিপদৰ তথ্য জনাওক</string>
+    <string name="priority_affected_areas">প্ৰভাৱিত অঞ্চল</string>
+    <string name="priority_road_infrastructure">পথ / আন্তঃগাঁথনিৰ ক্ষতি</string>
+    <string name="priority_response_coordination">সহায়তাৰ সমন্বয়</string>
+    <string name="priority_high_risk_zones">সংকটজনক / উচ্চ বিপদ অঞ্চল</string>
+    <string name="priority_rescue_priorities">উদ্ধাৰ অগ্ৰাধিকাৰ</string>
+    <string name="priority_affected_infrastructure">প্ৰভাৱিত আন্তঃগাঁথনি</string>
+    <string name="priority_regional_risk">আঞ্চলিক বিপদ পৰ্য্যালোচনা</string>
+    <string name="priority_infrastructure_exposure">আন্তঃগাঁথনিৰ বিপদ</string>
+    <string name="priority_response_status">প্ৰতিক্ৰিয়াৰ স্থিতি</string>
+    <string name="status_active_count">%1$d সক্ৰিয়</string>
+    <string name="status_none_active">কোনো সক্ৰিয় নাই</string>
+    <string name="status_available">উপলব্ধ</string>
+    <string name="status_standby">ষ্টেণ্ডবাই</string>
+    <string name="status_normal">সাধাৰণ</string>
+    <string name="status_warning">সতৰ্কবাৰ্তা</string>
+    <string name="status_critical">সংকটজনক</string>
+    <string name="status_no_incidents">কোনো ঘটনা নাই</string>
+    
+    <!-- Notification strings -->
+    <string name="notification_emergency_title">🚨 %1$s: %2$s</string>
+    <string name="notification_emergency_body">তৎক্ষণাৎ খালী কৰক! %1$sৰ ওচৰত বিপদ দেখা গৈছে। জৰুৰীকালীন সতৰ্কবাৰ্তা খোলক।</string>
+    <string name="notification_open_alert">জৰুৰীকালীন সতৰ্কবাৰ্তা খোলক</string>
 </resources>

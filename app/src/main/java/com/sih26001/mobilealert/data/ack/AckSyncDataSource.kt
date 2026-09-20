@@ -1,6 +1,9 @@
 package com.sih26001.mobilealert.data.ack
 
 import com.sih26001.mobilealert.data.local.PendingAckEntity
+import com.sih26001.mobilealert.data.remote.api.AlertApiService
+import com.sih26001.mobilealert.data.remote.dto.AckRequestDto
+import kotlinx.coroutines.CancellationException
 
 /**
  * Abstraction for synchronizing operational acknowledgement records with the backend.
@@ -26,6 +29,45 @@ interface AckSyncDataSource {
     suspend fun synchronizeAck(
         pendingAck: PendingAckEntity
     ): Result<Unit>
+}
+
+/**
+ * Live HTTP transport implementation of [AckSyncDataSource].
+ * Synchronizes operational acknowledgments with the backend via POST /api/v1/alerts/{alert_id}/ack.
+ */
+class HttpAckSyncDataSource(
+    private val apiService: AlertApiService
+) : AckSyncDataSource {
+    override suspend fun synchronizeAck(
+        pendingAck: PendingAckEntity
+    ): Result<Unit> {
+        return try {
+            val response = apiService.acknowledgeAlert(
+                alertId = pendingAck.alertId,
+                request = AckRequestDto(
+                    alert_id = pendingAck.alertId,
+                    acknowledged_by = "Android User",
+                    notes = "Operational acknowledgement confirmed on Android mobile device"
+                )
+            )
+
+            // The backend returns: {"alert_id":"...","status":"ACKNOWLEDGED","timestamp":"...","mqtt_published":true}
+            val isSuccess = response.status.equals("ACKNOWLEDGED", ignoreCase = true) ||
+                    (response.alert_id != null && response.alert_id == pendingAck.alertId)
+
+            if (isSuccess) {
+                Result.success(Unit)
+            } else {
+                Result.failure(
+                    IllegalStateException("Authoritative server returned non-ACK status: ${response.status}")
+                )
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 /**

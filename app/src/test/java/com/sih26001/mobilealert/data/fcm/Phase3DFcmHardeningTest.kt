@@ -249,6 +249,24 @@ class Phase3DFcmHardeningTest {
             }
             return alerts
         }
+
+        override suspend fun getActiveAlerts(): List<AlertDto> = getAlerts()
+        override suspend fun getAlertById(alertId: String): AlertDto = getAlerts().first { it.alert_id == alertId }
+
+        override suspend fun acknowledgeAlert(
+            alertId: String,
+            request: com.sih26001.mobilealert.data.remote.dto.AckRequestDto?
+        ): com.sih26001.mobilealert.data.remote.dto.AckResponseDto =
+            com.sih26001.mobilealert.data.remote.dto.AckResponseDto(alert_id = alertId, status = "ACKNOWLEDGED")
+
+        override suspend fun silenceAlarm(): com.sih26001.mobilealert.data.remote.dto.SilenceResponseDto =
+            com.sih26001.mobilealert.data.remote.dto.SilenceResponseDto(status = "SILENCED", is_muted = true)
+
+        override suspend fun getAlarmStatus(): com.sih26001.mobilealert.data.remote.dto.AlarmStatusDto =
+            com.sih26001.mobilealert.data.remote.dto.AlarmStatusDto()
+
+        override suspend fun getSystemStatus(): com.sih26001.mobilealert.data.remote.dto.SystemStatusDto =
+            com.sih26001.mobilealert.data.remote.dto.SystemStatusDto()
     }
 
     private class FakeTestAlertDao : AlertDao {
@@ -298,6 +316,14 @@ class Phase3DFcmHardeningTest {
 
         override fun deleteAllAlerts() {
             map.value = emptyMap()
+        }
+
+        override fun deleteAlertsBySource(source: String) {
+            map.value = map.value.filterValues { it.source != source }
+        }
+
+        override fun deleteAlertsByIds(alertIds: List<String>) {
+            map.value = map.value.filterKeys { !alertIds.contains(it) }
         }
     }
 }

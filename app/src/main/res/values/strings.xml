@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SIXTH SENSE</string>
+    <string name="app_name">GeoAgent</string>
     <string name="app_tagline">See the Risk Before the Ground Moves.</string>
     
     <!-- Navigation -->
@@ -14,19 +14,38 @@
     <string name="label_current_area">Your Area</string>
     <string name="status_normal_title">NO ACTIVE WARNING</string>
     <string name="status_normal_subtitle">Your area is currently clear.</string>
+    <string name="radar_sensor_label">LIVE SENSOR RADAR</string>
     
     <!-- Two-Phase Alert System -->
     <string name="alert_warning_title">WARNING</string>
     <string name="alert_warning_subtitle">Landslide risk detected nearby</string>
     <string name="alert_high_title">HIGH ALERT</string>
     <string name="alert_high_subtitle">Landslide danger nearby</string>
+    <string name="alert_critical_title">CRITICAL ALERT</string>
+    <string name="alert_critical_subtitle">Immediate landslide emergency nearby</string>
+    
+    <!-- Emergency Full-Screen UI -->
+    <string name="hazard_landslide_detected">LANDSLIDE RISK DETECTED</string>
+    <string name="hazard_detected_near">Hazard detected near %1$s.</string>
+    <string name="hazard_move_away_desc">Move away from the identified hazard zone immediately.</string>
+    <string name="label_safe_place">SAFE PLACE</string>
+    <string name="label_demo_destination">DEMO DESTINATION (SIMULATION)</string>
+    <string name="action_view_safe_route">VIEW SAFE ROUTE</string>
+    <string name="siren_active">SIREN ACTIVE</string>
+    <string name="siren_silenced">SIREN SILENCED</string>
+    <string name="action_silence_siren">SILENCE SIREN</string>
+    <string name="action_im_safe_ack">I\'M SAFE / ACKNOWLEDGE</string>
+    <string name="action_siren_silenced_status">Siren silenced locally. Alert remains active.</string>
     
     <!-- 5 Core Questions -->
     <string name="question_what_happened">WHAT HAPPENED?</string>
     <string name="question_why">WHY?</string>
+    <string name="question_where">WHERE?</string>
     <string name="question_what_to_do">WHAT SHOULD YOU DO?</string>
     <string name="question_where_to_go">WHERE SHOULD I GO?</string>
     <string name="question_how_to_get_there">HOW DO I GET THERE?</string>
+    <string name="nearest_safe_location_desc">Nearest verified safe location or designated high ground relief center.</string>
+    <string name="what_happened_desc">Unusual ground conditions have been detected near %1$s.</string>
     
     <!-- Default instructions when backend doesn't specify -->
     <string name="warning_instruction_default">Stay away from steep slopes and avoid travelling toward the affected area.</string>
@@ -42,6 +61,8 @@
     <string name="action_acknowledging">ACKNOWLEDGING…</string>
     <string name="action_acknowledged">OPERATIONALLY ACKNOWLEDGED</string>
     <string name="action_view_details">VIEW ALERT DETAILS</string>
+    <string name="action_change_role">Change</string>
+    <string name="role_prefix">ROLE: %1$s</string>
     
     <!-- Safe Place Screen -->
     <string name="safe_place_title">Nearest Safe Location</string>
@@ -62,6 +83,7 @@
     <string name="last_updated_prefix">Last updated: %1$s</string>
     <string name="silence_notice">Alarm is silenced locally. Operational acknowledgement is required.</string>
     <string name="sync_pending_notice">Acknowledgement recorded locally. Will sync with authoritative server once connected.</string>
+    <string name="operational_controls">Operational Controls</string>
     
     <!-- History & Lists -->
     <string name="history_title">Alert History</string>
@@ -70,20 +92,68 @@
     <string name="alerts_title">Active Alerts</string>
     <string name="alerts_empty_title">No Active Alerts</string>
     <string name="alerts_empty_subtitle">No active landslide warnings have been issued for your monitored zones.</string>
+    <string name="monitored_zone_default">Monitored Zone</string>
+    <string name="status_acknowledged">Acknowledged</string>
+    <string name="status_expired">Expired</string>
+    <string name="status_silenced">Silenced</string>
     
     <!-- Settings & Languages -->
     <string name="settings_title">Settings</string>
     <string name="language_title">Language</string>
+    <string name="settings_language_desc">Select application display language</string>
     <string name="lang_en">English</string>
-    <string name="lang_hi">हिंदी (Hindi)</string>
+    <string name="lang_hi">हिन्दी (Hindi)</string>
+    <string name="lang_mr">मराठी (Marathi)</string>
     <string name="lang_as">অসমীয়া (Assamese)</string>
-    <string name="about_title">About SIXTH SENSE</string>
-    <string name="about_desc">SIXTH SENSE Mobile Alert is an authoritative last-mile emergency response app providing rapid warning and evacuation decision guidance for high-risk landslide regions.</string>
+    <string name="about_title">About GeoAgent</string>
+    <string name="about_desc">GeoAgent Mobile Alert is an authoritative last-mile emergency response app providing rapid warning and evacuation decision guidance for high-risk landslide regions.</string>
+    <string name="device_settings_title">Device &amp; System Information</string>
+    <string name="current_role_label">Active Role</string>
     
-    <!-- Simulation / Demo Protocol -->
-    <string name="demo_title">Simulation / Demo Protocol</string>
-    <string name="demo_normal">NORMAL</string>
-    <string name="demo_warning">WARNING</string>
-    <string name="demo_high_alert">HIGH ALERT</string>
-    <string name="demo_clear">CLEAR</string>
+    <!-- Role Selection -->
+    <string name="role_title">Who are you?</string>
+    <string name="role_subtitle">Select your role to continue</string>
+    <string name="role_continue">CONTINUE</string>
+    <string name="role_disclaimer">This is a demo role selection. No personal data is collected or stored.</string>
+    <string name="role_priority_title">Priority for your role</string>
+    
+    <!-- Role Names & Descriptions -->
+    <string name="role_citizen_name">Citizen</string>
+    <string name="role_citizen_desc">Receive alerts and evacuation guidance for your area</string>
+    <string name="role_police_name">Police</string>
+    <string name="role_police_desc">Coordinate law enforcement response and area control</string>
+    <string name="role_rescue_name">Rescue Team</string>
+    <string name="role_rescue_desc">Deploy search-and-rescue operations in affected zones</string>
+    <string name="role_admin_name">District Administration</string>
+    <string name="role_admin_desc">Oversee district-wide disaster response and resource allocation</string>
+    <string name="role_emergency_name">Emergency Services</string>
+    <string name="role_emergency_desc">Manage emergency infrastructure and medical response</string>
+    
+    <!-- Role Priorities -->
+    <string name="priority_active_alerts">Active Alerts</string>
+    <string name="priority_current_risk">Current Risk</string>
+    <string name="priority_safe_places">Safe Places</string>
+    <string name="priority_report_hazard">Report Hazard</string>
+    <string name="priority_affected_areas">Affected Areas</string>
+    <string name="priority_road_infrastructure">Road / Infrastructure Exposure</string>
+    <string name="priority_response_coordination">Response Coordination</string>
+    <string name="priority_high_risk_zones">Critical / High Risk Zones</string>
+    <string name="priority_rescue_priorities">Rescue Priorities</string>
+    <string name="priority_affected_infrastructure">Affected Infrastructure</string>
+    <string name="priority_regional_risk">Regional Risk Overview</string>
+    <string name="priority_infrastructure_exposure">Infrastructure Exposure</string>
+    <string name="priority_response_status">Response Status</string>
+    <string name="status_active_count">%1$d Active</string>
+    <string name="status_none_active">None active</string>
+    <string name="status_available">Available</string>
+    <string name="status_standby">Standby</string>
+    <string name="status_normal">Normal</string>
+    <string name="status_warning">Warning</string>
+    <string name="status_critical">Critical</string>
+    <string name="status_no_incidents">No active incidents</string>
+    
+    <!-- Notification strings -->
+    <string name="notification_emergency_title">🚨 %1$s: %2$s</string>
+    <string name="notification_emergency_body">EVACUATE NOW! Hazard detected near %1$s. Open emergency alert.</string>
+    <string name="notification_open_alert">Open Emergency Alert</string>
 </resources>

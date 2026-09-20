@@ -165,7 +165,7 @@ private fun AlertCard(
                     color = cardBorder
                 ) {
                     Text(
-                        text = if (isCritical) "🚨 HIGH ALERT" else "⚠️ WARNING",
+                        text = if (isCritical) stringResource(R.string.alert_high_title) else stringResource(R.string.alert_warning_title),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
@@ -178,8 +178,9 @@ private fun AlertCard(
                 )
             }
 
+            val zoneName = alert.location?.name ?: stringResource(R.string.monitored_zone_default)
             Text(
-                text = "📍 ${alert.location?.name ?: "Monitored Zone"}",
+                text = "📍 $zoneName",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = Slate900

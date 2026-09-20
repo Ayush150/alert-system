@@ -123,16 +123,16 @@ fun HistoryScreen(
 private fun HistoryItemCard(alert: Alert) {
     val isCritical = alert.severity == AlertSeverity.CRITICAL
     val badgeColor = if (isCritical) AlertRed600 else WarningAmber600
-    val severityLabel = if (isCritical) "🚨 HIGH ALERT" else "⚠️ WARNING"
+    val severityLabel = if (isCritical) stringResource(R.string.alert_high_title) else stringResource(R.string.alert_warning_title)
 
     val timeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy • HH:mm")
         .withZone(ZoneId.systemDefault())
     val formattedTime = timeFormatter.format(alert.issuedAt)
 
     val statusText = when (alert.status) {
-        AlertStatus.ACKNOWLEDGED -> "Acknowledged"
-        AlertStatus.EXPIRED -> "Expired"
-        AlertStatus.SILENCED -> "Silenced"
+        AlertStatus.ACKNOWLEDGED -> stringResource(R.string.status_acknowledged)
+        AlertStatus.EXPIRED -> stringResource(R.string.status_expired)
+        AlertStatus.SILENCED -> stringResource(R.string.status_silenced)
         else -> alert.status.name
     }
 
@@ -179,8 +179,9 @@ private fun HistoryItemCard(alert: Alert) {
                 }
             }
 
+            val areaName = alert.location?.name ?: stringResource(R.string.monitored_zone_default)
             Text(
-                text = "📍 ${alert.location?.name ?: "Area Unspecified"}",
+                text = "📍 $areaName",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = Slate900

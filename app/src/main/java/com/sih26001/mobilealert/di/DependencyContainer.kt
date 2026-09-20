@@ -97,9 +97,9 @@ object DependencyContainer {
         com.sih26001.mobilealert.data.ack.DefaultAckRecoveryPolicy()
     }
 
-    // Production transport MUST remain unavailable and MUST NEVER report fake success
+    // Production HTTP transport connects to live AlertApiService
     val ackSyncDataSource: com.sih26001.mobilealert.data.ack.AckSyncDataSource by lazy {
-        com.sih26001.mobilealert.data.ack.UnavailableAckSyncDataSource()
+        com.sih26001.mobilealert.data.ack.HttpAckSyncDataSource(alertApiService)
     }
 
     val ackSyncEventLogger: com.sih26001.mobilealert.data.ack.AckSyncEventLogger by lazy {
@@ -136,12 +136,27 @@ object DependencyContainer {
         com.sih26001.mobilealert.data.remote.RetrofitProvider.provideAlertApiService()
     }
 
+    // Expose RolePreferences for demo role selection persistence
+    val rolePreferences: com.sih26001.mobilealert.data.preferences.RolePreferences by lazy {
+        com.sih26001.mobilealert.data.preferences.RolePreferences(appContext)
+    }
+
+    // Expose DemoProtocolManager for lifecycle-based alarm gating
+    val demoProtocolManager: com.sih26001.mobilealert.core.demo.DemoProtocolManager by lazy {
+        com.sih26001.mobilealert.core.demo.DemoProtocolManagerImpl()
+    }
+
+    // Expose AlarmController for hardware alarm operations
+    val alarmController: com.sih26001.mobilealert.core.alarm.AlarmController by lazy {
+        com.sih26001.mobilealert.core.alarm.AlarmControllerImpl(appContext)
+    }
+
     // Expose the FCM trigger handler for background authoritative processing
     val fcmAlertTriggerHandler: com.sih26001.mobilealert.data.fcm.FcmAlertTriggerHandler by lazy {
         com.sih26001.mobilealert.data.fcm.FcmAlertTriggerHandlerImpl(
             alertRepository = alertRepository,
             notificationManager = com.sih26001.mobilealert.core.notification.AlertNotificationManagerImpl(appContext),
-            alarmController = com.sih26001.mobilealert.core.alarm.AlarmControllerImpl(appContext),
+            alarmController = alarmController,
             coroutineScope = applicationScope
         )
     }

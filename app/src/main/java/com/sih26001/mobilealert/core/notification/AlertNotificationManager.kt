@@ -9,10 +9,13 @@ import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.sih26001.mobilealert.R
 import com.sih26001.mobilealert.core.util.Constants
+import com.sih26001.mobilealert.core.util.LocaleManager
 import com.sih26001.mobilealert.domain.model.Alert
 import com.sih26001.mobilealert.domain.model.AlertSeverity
 import com.sih26001.mobilealert.domain.model.Location
+import com.sih26001.mobilealert.domain.model.isDemoAlert
 import java.util.Locale
 
 interface AlertNotificationManager {
@@ -92,6 +95,14 @@ class AlertNotificationManagerImpl(
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
         }
+
+        fun createEmergencyIntent(context: Context, alertId: String): Intent {
+            return Intent(context, com.sih26001.mobilealert.presentation.emergency.EmergencyAlertActivity::class.java).apply {
+                putExtra("alert_id", alertId)
+                data = Uri.parse("sih26001://emergency/$alertId")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+        }
     }
 
     override fun showAlertNotification(alert: Alert) {
@@ -134,21 +145,54 @@ class AlertNotificationManagerImpl(
     }
 
     fun buildNotification(alert: Alert, channelId: String = getChannelIdForSeverity(alert.severity)): Notification {
-        val pendingIntent = createPendingIntent(alert.alertId)
-        val contentText = formatContentText(alert)
+        val localizedContext = try {
+            LocaleManager.getLocalizedContext(context)
+        } catch (_: Exception) {
+            context
+        }
+
+        val isEmergencyDemoAlert = alert.isDemoAlert() && 
+            alert.severity in setOf(AlertSeverity.HIGH, AlertSeverity.CRITICAL)
+
+        val pendingIntent = if (isEmergencyDemoAlert) {
+            createEmergencyPendingIntent(alert.alertId)
+        } else {
+            createPendingIntent(alert.alertId)
+        }
+
+        val title: String
+        val contentText: String
+
+        if (isEmergencyDemoAlert) {
+            val severityLabel = when (alert.severity) {
+                AlertSeverity.CRITICAL -> localizedContext.getString(R.string.alert_critical_title)
+                AlertSeverity.HIGH -> localizedContext.getString(R.string.alert_high_title)
+                AlertSeverity.NORMAL -> localizedContext.getString(R.string.alert_warning_title)
+            }
+            val hazardLabel = localizedContext.getString(R.string.hazard_landslide_detected)
+            title = localizedContext.getString(R.string.notification_emergency_title, severityLabel, hazardLabel)
+
+            val areaName = alert.location?.name ?: localizedContext.getString(R.string.default_location)
+            contentText = localizedContext.getString(R.string.notification_emergency_body, areaName)
+        } else {
+            title = "${alert.severity.name} ${alert.eventType}"
+            contentText = formatContentText(alert)
+        }
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("${alert.severity.name} ${alert.eventType}")
+            .setContentTitle(title)
             .setContentText(contentText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("$contentText\n\n${alert.recommendedAction ?: ""}"))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setPriority(getPriorityForSeverity(alert.severity))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
-        if (alert.severity == AlertSeverity.CRITICAL) {
+        // Wake screen and launch full-screen emergency intent for demo HIGH/CRITICAL or any CRITICAL alert
+        if (isEmergencyDemoAlert || alert.severity == AlertSeverity.CRITICAL) {
             builder.setFullScreenIntent(pendingIntent, true)
             builder.setCategory(NotificationCompat.CATEGORY_ALARM)
+            builder.setPriority(NotificationCompat.PRIORITY_MAX)
         }
 
         return builder.build()
@@ -156,6 +200,16 @@ class AlertNotificationManagerImpl(
 
     private fun createPendingIntent(alertId: String): PendingIntent {
         val intent = createDeepLinkIntent(alertId)
+        return PendingIntent.getActivity(
+            context,
+            getNotificationId(alertId),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun createEmergencyPendingIntent(alertId: String): PendingIntent {
+        val intent = createEmergencyIntent(context, alertId)
         return PendingIntent.getActivity(
             context,
             getNotificationId(alertId),

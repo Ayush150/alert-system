@@ -31,7 +31,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import java.time.Instant
 
@@ -115,9 +117,9 @@ class FcmAckIntegrationTest {
         // Verify no pending ACK yet
         assertTrue(fakePendingAckDao.getPendingAcks().isEmpty())
 
-        // Verify alarm and notification were triggered
+        // Verify notification was triggered but alarm was NOT triggered for ordinary cloud alert
         verify(mockNotificationManager).showAlertNotification(persisted!!)
-        verify(mockAlarmController).startAlarm(persisted)
+        verify(mockAlarmController, never()).startAlarm(any())
 
         // 4. User presses ACKNOWLEDGE in UI -> invokes AcknowledgeAlertUseCase
         val ackResult = acknowledgeAlertUseCase(alertId)
@@ -154,6 +156,19 @@ class FcmAckIntegrationTest {
     private class FakeTestApiService : AlertApiService {
         var alerts: List<AlertDto> = emptyList()
         override suspend fun getAlerts(): List<AlertDto> = alerts
+        override suspend fun getActiveAlerts(): List<AlertDto> = alerts
+        override suspend fun getAlertById(alertId: String): AlertDto = alerts.first { it.alert_id == alertId }
+        override suspend fun acknowledgeAlert(
+            alertId: String,
+            request: com.sih26001.mobilealert.data.remote.dto.AckRequestDto?
+        ): com.sih26001.mobilealert.data.remote.dto.AckResponseDto =
+            com.sih26001.mobilealert.data.remote.dto.AckResponseDto(alert_id = alertId, status = "ACKNOWLEDGED")
+        override suspend fun silenceAlarm(): com.sih26001.mobilealert.data.remote.dto.SilenceResponseDto =
+            com.sih26001.mobilealert.data.remote.dto.SilenceResponseDto(status = "SILENCED", is_muted = true)
+        override suspend fun getAlarmStatus(): com.sih26001.mobilealert.data.remote.dto.AlarmStatusDto =
+            com.sih26001.mobilealert.data.remote.dto.AlarmStatusDto()
+        override suspend fun getSystemStatus(): com.sih26001.mobilealert.data.remote.dto.SystemStatusDto =
+            com.sih26001.mobilealert.data.remote.dto.SystemStatusDto()
     }
 
     private class FakeTestAlertDao : AlertDao {
@@ -190,6 +205,12 @@ class FcmAckIntegrationTest {
         }
         override fun deleteAllAlerts() {
             map.value = emptyMap()
+        }
+        override fun deleteAlertsBySource(source: String) {
+            map.value = map.value.filterValues { it.source != source }
+        }
+        override fun deleteAlertsByIds(alertIds: List<String>) {
+            map.value = map.value.filterKeys { !alertIds.contains(it) }
         }
     }
 

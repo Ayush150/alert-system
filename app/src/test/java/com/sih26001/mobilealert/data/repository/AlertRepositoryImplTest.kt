@@ -479,10 +479,64 @@ class AlertRepositoryImplTest {
 class FakeAlertApiService : AlertApiService {
     var mockResponse: List<AlertDto> = emptyList()
     var shouldThrow: Exception? = null
+    var silenceShouldThrow: Exception? = null
+    var silenceCallCount: Int = 0
+    var ackCallCount: Int = 0
 
     override suspend fun getAlerts(): List<AlertDto> {
         shouldThrow?.let { throw it }
         return mockResponse
+    }
+
+    override suspend fun getActiveAlerts(): List<AlertDto> {
+        shouldThrow?.let { throw it }
+        return mockResponse
+    }
+
+    override suspend fun getAlertById(alertId: String): AlertDto {
+        shouldThrow?.let { throw it }
+        return mockResponse.firstOrNull { it.alert_id == alertId }
+            ?: throw retrofit2.HttpException(
+                retrofit2.Response.error<AlertDto>(
+                    404,
+                    okhttp3.ResponseBody.create(null, "Not Found")
+                )
+            )
+    }
+
+    override suspend fun acknowledgeAlert(
+        alertId: String,
+        request: com.sih26001.mobilealert.data.remote.dto.AckRequestDto?
+    ): com.sih26001.mobilealert.data.remote.dto.AckResponseDto {
+        shouldThrow?.let { throw it }
+        ackCallCount++
+        return com.sih26001.mobilealert.data.remote.dto.AckResponseDto(
+            alert_id = alertId,
+            status = "ACKNOWLEDGED",
+            timestamp = "2026-09-19T18:00:00Z",
+            mqtt_published = true
+        )
+    }
+
+    override suspend fun silenceAlarm(): com.sih26001.mobilealert.data.remote.dto.SilenceResponseDto {
+        silenceShouldThrow?.let { throw it }
+        silenceCallCount++
+        return com.sih26001.mobilealert.data.remote.dto.SilenceResponseDto(
+            status = "SILENCED",
+            is_muted = true,
+            alarm_state = "WARNING",
+            active_alert_id = null
+        )
+    }
+
+    override suspend fun getAlarmStatus(): com.sih26001.mobilealert.data.remote.dto.AlarmStatusDto {
+        shouldThrow?.let { throw it }
+        return com.sih26001.mobilealert.data.remote.dto.AlarmStatusDto()
+    }
+
+    override suspend fun getSystemStatus(): com.sih26001.mobilealert.data.remote.dto.SystemStatusDto {
+        shouldThrow?.let { throw it }
+        return com.sih26001.mobilealert.data.remote.dto.SystemStatusDto()
     }
 }
 
@@ -540,6 +594,16 @@ class FakeAlertDao : AlertDao {
 
     override fun deleteAllAlerts() {
         entities.value = emptyMap()
+    }
+
+    override fun deleteAlertsBySource(source: String) {
+        val current = entities.value.toMutableMap()
+        entities.value = current.filterValues { it.source != source }
+    }
+
+    override fun deleteAlertsByIds(alertIds: List<String>) {
+        val current = entities.value.toMutableMap()
+        entities.value = current.filterKeys { !alertIds.contains(it) }
     }
 }
 

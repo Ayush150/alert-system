@@ -37,4 +37,10 @@ interface AlertDao {
 
     @Query("DELETE FROM alerts")
     fun deleteAllAlerts()
+
+    @Query("DELETE FROM alerts WHERE source = :source")
+    fun deleteAlertsBySource(source: String)
+
+    @Query("DELETE FROM alerts WHERE alertId IN (:alertIds)")
+    fun deleteAlertsByIds(alertIds: List<String>)
 }

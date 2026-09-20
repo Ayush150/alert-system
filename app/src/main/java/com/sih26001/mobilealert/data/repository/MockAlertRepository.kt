@@ -2,6 +2,7 @@ package com.sih26001.mobilealert.data.repository
 
 import com.sih26001.mobilealert.domain.model.Alert
 import com.sih26001.mobilealert.domain.model.AlertStatus
+import com.sih26001.mobilealert.domain.model.isDemoAlert
 import com.sih26001.mobilealert.domain.repository.AlertRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,7 +71,9 @@ class MockAlertRepository : AlertRepository {
             acknowledgedAt = now
         )
         _alerts.value = currentList.toMutableList().apply { set(index, updatedAlert) }
-        _pendingAckIds.value = _pendingAckIds.value + trimmedId
+        if (!existing.isDemoAlert()) {
+            _pendingAckIds.value = _pendingAckIds.value + trimmedId
+        }
         return Result.success(Unit)
     }
 

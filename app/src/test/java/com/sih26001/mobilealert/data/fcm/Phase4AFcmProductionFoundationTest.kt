@@ -134,7 +134,7 @@ class Phase4AFcmProductionFoundationTest {
 
         verify(mockAlertRepository).refreshAlert(pilotAlertId)
         verify(mockNotificationManager).showAlertNotification(authoritativeAlert)
-        verify(mockAlarmController).startAlarm(authoritativeAlert)
+        verify(mockAlarmController, never()).startAlarm(any())
     }
 
     // =========================================================================
