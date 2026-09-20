@@ -21,6 +21,7 @@ import com.sih26001.mobilealert.core.navigation.AppNavigation
 import com.sih26001.mobilealert.core.notification.AlertNotificationManagerImpl
 import com.sih26001.mobilealert.core.notification.NotificationChannels
 import com.sih26001.mobilealert.core.ui.theme.SIH26001MobileAlertTheme
+import com.sih26001.mobilealert.di.DependencyContainer
 
 class MainActivity : ComponentActivity() {
 
@@ -38,7 +39,7 @@ class MainActivity : ComponentActivity() {
         object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val notificationManager = AlertNotificationManagerImpl(this@MainActivity)
-                val alarmController = AlarmControllerImpl(this@MainActivity)
+                val alarmController = DependencyContainer.alarmController
                 @Suppress("UNCHECKED_CAST")
                 return MainViewModel(notificationManager, alarmController) as T
             }
@@ -105,6 +106,8 @@ class MainActivity : ComponentActivity() {
                     val preview = com.sih26001.mobilealert.data.fcm.SihFirebaseMessagingService.maskToken(token)
                     Log.i(TAG, "FCM token retrieved (length=${token?.length ?: 0}, preview=$preview)")
                 }
+                // Ensure topic subscription is active
+                com.sih26001.mobilealert.data.fcm.FcmTopicSubscriber.subscribeToAlertsTopic()
             } else {
                 Log.w(TAG, "Firebase not initialized. Skipping FCM token retrieval.")
             }

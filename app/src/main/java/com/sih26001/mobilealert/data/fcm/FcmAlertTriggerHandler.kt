@@ -1,11 +1,17 @@
 package com.sih26001.mobilealert.data.fcm
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import com.sih26001.mobilealert.core.alarm.AlarmController
 import com.sih26001.mobilealert.core.notification.AlertNotificationManager
+import com.sih26001.mobilealert.di.DependencyContainer
 import com.sih26001.mobilealert.domain.model.AlertSeverity
 import com.sih26001.mobilealert.domain.model.AlertStatus
+import com.sih26001.mobilealert.domain.model.isDemoAlert
 import com.sih26001.mobilealert.domain.repository.AlertRepository
+import com.sih26001.mobilealert.presentation.emergency.EmergencyAlertActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -23,6 +29,7 @@ class FcmAlertTriggerHandlerImpl(
     private val notificationManager: AlertNotificationManager,
     private val alarmController: AlarmController,
     private val coroutineScope: CoroutineScope,
+    private val context: Context? = null,
     private val maxRetries: Int = 3,
     private val initialDelayMs: Long = 1000L,
     private val backoffMultiplier: Double = 2.0
@@ -51,13 +58,19 @@ class FcmAlertTriggerHandlerImpl(
                     if (alert.status != AlertStatus.EXPIRED) {
                         notificationManager.showAlertNotification(alert)
 
-                        // Severity-based alarm condition: only HIGH and CRITICAL trigger audible/vibration alarm
+                        // Alarm activation is STRICTLY gated:
+                        // 1. Alert was delivered through authoritative backend/FCM path (handled here in FcmAlertTriggerHandler).
+                        // 2. Alert must explicitly qualify as an active system-generated demo alert (alert.isDemoAlert()).
+                        // 3. Severity must be HIGH or CRITICAL (NORMAL demo alerts do NOT alarm).
+                        // 4. Real cloud alerts (Risk Engine, IMD, Geological Survey, etc.) MUST NEVER trigger physical hardware alarms.
                         if (alert.status == AlertStatus.ACTIVE &&
-                            alert.severity in setOf(AlertSeverity.HIGH, AlertSeverity.CRITICAL)
+                            alert.severity in setOf(AlertSeverity.HIGH, AlertSeverity.CRITICAL) &&
+                            alert.isDemoAlert()
                         ) {
                             alarmController.startAlarm(alert)
+                            launchEmergencyActivity(alert.alertId)
                         } else {
-                            Log.d(TAG, "Alert $alertId is ${alert.severity}, skipping emergency alarm")
+                            Log.d(TAG, "Alert $alertId is not an active demo HIGH/CRITICAL alert; skipping physical alarm")
                         }
                     } else {
                         Log.d(TAG, "Alert $alertId is expired, skipping notification and alarm")
@@ -82,6 +95,28 @@ class FcmAlertTriggerHandlerImpl(
             }
 
             Log.w(TAG, "Authoritative fetch permanently failed after ${maxRetries + 1} attempts for alert_id=$alertId: ${lastError?.message}")
+        }
+    }
+
+    private fun launchEmergencyActivity(alertId: String) {
+        val targetContext = context ?: try {
+            DependencyContainer.appContext
+        } catch (_: Throwable) {
+            null
+        }
+
+        if (targetContext != null) {
+            try {
+                val intent = Intent(targetContext, EmergencyAlertActivity::class.java).apply {
+                    putExtra("alert_id", alertId)
+                    data = Uri.parse("sih26001://emergency/$alertId")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                targetContext.startActivity(intent)
+                Log.i(TAG, "Launched EmergencyAlertActivity for alert_id=$alertId")
+            } catch (e: Exception) {
+                Log.w(TAG, "Direct launch of EmergencyAlertActivity failed; fullScreenIntent will handle wake/presentation: ${e.message}")
+            }
         }
     }
 }

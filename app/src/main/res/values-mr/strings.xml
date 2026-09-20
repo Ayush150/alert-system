@@ -1,0 +1,159 @@
+<resources>
+    <string name="app_name">GeoAgent</string>
+    <string name="app_tagline">जमीन खचण्यापूर्वीच धोक्याची जाणीव ठेवा.</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">मुख्यपृष्ठ</string>
+    <string name="nav_alerts">इशारे</string>
+    <string name="nav_history">इतिहास</string>
+    <string name="nav_settings">सेटिंग्ज</string>
+    <string name="nav_back">मागे</string>
+    
+    <!-- Status & Alerts Header -->
+    <string name="default_location">शिलॉंग</string>
+    <string name="label_current_area">तुमचा परिसर</string>
+    <string name="status_normal_title">कोणताही सक्रिय इशारा नाही</string>
+    <string name="status_normal_subtitle">तुमचा परिसर सध्या सुरक्षित आहे.</string>
+    <string name="radar_sensor_label">थेट सेन्सर रडार</string>
+    
+    <!-- Two-Phase Alert System -->
+    <string name="alert_warning_title">चेतावणी</string>
+    <string name="alert_warning_subtitle">परिसरात दरड कोसळण्याचा धोका आढळला आहे</string>
+    <string name="alert_high_title">हाय अलर्ट</string>
+    <string name="alert_high_subtitle">परिसरात दरड कोसळण्याचा गंभीर धोका</string>
+    <string name="alert_critical_title">अतिगंभीर आणीबाणी इशारा</string>
+    <string name="alert_critical_subtitle">तातडीची दरड कोसळण्याची आपत्कालीन परिस्थिती</string>
+    
+    <!-- Emergency Full-Screen UI -->
+    <string name="hazard_landslide_detected">दरड कोसळण्याचा धोका आढळला आहे</string>
+    <string name="hazard_detected_near">%1$s जवळ धोका आढळला आहे.</string>
+    <string name="hazard_move_away_desc">चिन्हांकित धोकादायक भागातून त्वरित बाहेर पडा.</string>
+    <string name="label_safe_place">सुरक्षित ठिकाण</string>
+    <string name="label_demo_destination">डेमो गंतव्य (सिम्युलेशन)</string>
+    <string name="action_view_safe_route">सुरक्षित मार्ग पहा</string>
+    <string name="siren_active">सायरन सुरू आहे</string>
+    <string name="siren_silenced">सायरन बंद केला</string>
+    <string name="action_silence_siren">सायरन बंद करा</string>
+    <string name="action_im_safe_ack">मी सुरक्षित आहे / स्वीकारा</string>
+    <string name="action_siren_silenced_status">सायरन स्थानिक पातळीवर बंद केला. इशारा सक्रिय राहील.</string>
+    
+    <!-- 5 Core Questions -->
+    <string name="question_what_happened">काय घडले?</string>
+    <string name="question_why">का घडले?</string>
+    <string name="question_where">कुठे?</string>
+    <string name="question_what_to_do">तुम्ही काय करावे?</string>
+    <string name="question_where_to_go">कुठे जावे?</string>
+    <string name="question_how_to_get_there">तिथे कसे पोहोचावे?</string>
+    <string name="nearest_safe_location_desc">जवळचे प्रमाणित सुरक्षित ठिकाण किंवा निर्धारित मदत केंद्र.</string>
+    <string name="what_happened_desc">%1$s जवळ जमिनीची आणि मातीची असामान्य हालचाल आढळली आहे.</string>
+    
+    <!-- Default instructions -->
+    <string name="warning_instruction_default">उभ्या उतारांपासून दूर राहा आणि बाधित भागाकडे प्रवास करणे टाळा.</string>
+    <string name="high_alert_instruction_default">बाधित भागातून त्वरित बाहेर पडा आणि सुरक्षित स्थळी जा.</string>
+    
+    <!-- Primary Actions -->
+    <string name="action_find_safe_place">सुरक्षित ठिकाण शोधा</string>
+    <string name="action_evacuate_now">त्वरित रिकामे करा</string>
+    <string name="action_go_there">तिथे जा</string>
+    <string name="action_start_navigation">नेव्हिगेशन सुरू करा</string>
+    <string name="action_silence">अलार्म बंद करा</string>
+    <string name="action_acknowledge">स्वीकारा (ACK)</string>
+    <string name="action_acknowledging">स्वीकारत आहे…</string>
+    <string name="action_acknowledged">यशस्वीरीत्या स्वीकारले</string>
+    <string name="action_view_details">इशारा तपशील पहा</string>
+    <string name="action_change_role">बदला</string>
+    <string name="role_prefix">भूमिका: %1$s</string>
+    
+    <!-- Safe Place Screen -->
+    <string name="safe_place_title">जवळचे सुरक्षित ठिकाण</string>
+    <string name="safe_place_verified_label">प्रमाणित ठिकाण</string>
+    <string name="safe_place_unavailable">सुरक्षित ठिकाणाची माहिती सध्या उपलब्ध नाही.</string>
+    
+    <!-- Route Screen -->
+    <string name="route_title">सुरक्षित स्थलांतर मार्ग</string>
+    <string name="route_origin">तुम्ही</string>
+    <string name="route_destination">सुरक्षित ठिकाण</string>
+    <string name="route_unavailable">मार्ग सुरक्षिततेची माहिती सध्या उपलब्ध नाही.</string>
+    <string name="route_road_closed_warning">सावधान: मार्गावर अधिकृत रस्ता बंद असल्याचे आढळले आहे</string>
+    
+    <!-- Operational / Offline / Data Integrity -->
+    <string name="data_unavailable">माहिती उपलब्ध नाही</string>
+    <string name="why_unavailable">काही पर्यावरणीय माहिती सध्या उपलब्ध नाही.</string>
+    <string name="offline_notice">इंटरनेट कनेक्शन उपलब्ध नाही. शेवटची उपलब्ध माहिती दाखवली जात आहे.</string>
+    <string name="last_updated_prefix">शेवटचे अद्यतन: %1$s</string>
+    <string name="silence_notice">अलार्म स्थानिक पातळीवर बंद केला आहे. परिचालन स्वीकृती आवश्यक आहे.</string>
+    <string name="sync_pending_notice">स्वीकृती स्थानिक पातळीवर नोंदवली आहे. नेटवर्क आल्यावर सर्व्हरशी सिंक होईल.</string>
+    <string name="operational_controls">परिचालन नियंत्रणे</string>
+    
+    <!-- History & Lists -->
+    <string name="history_title">इशारा इतिहास</string>
+    <string name="history_empty_title">कोणताही इतिहास नाही</string>
+    <string name="history_empty_subtitle">मागील स्वीकारलेले किंवा कालबाह्य झालेले इशारे येथे दिसतील.</string>
+    <string name="alerts_title">सक्रिय इशारे</string>
+    <string name="alerts_empty_title">कोणताही सक्रिय इशारा नाही</string>
+    <string name="alerts_empty_subtitle">तुमच्या परिसरासाठी कोणताही दरड कोसळण्याचा इशारा जारी केलेला नाही.</string>
+    <string name="monitored_zone_default">निगरानी क्षेत्र</string>
+    <string name="status_acknowledged">स्वीकारले</string>
+    <string name="status_expired">कालबाह्य</string>
+    <string name="status_silenced">मूक (Silenced)</string>
+    
+    <!-- Settings & Languages -->
+    <string name="settings_title">सेटिंग्ज</string>
+    <string name="language_title">भाषा</string>
+    <string name="settings_language_desc">अॅपची भाषा निवडा</string>
+    <string name="lang_en">English</string>
+    <string name="lang_hi">हिन्दी (Hindi)</string>
+    <string name="lang_mr">मराठी (Marathi)</string>
+    <string name="lang_as">অসমীয়া (Assamese)</string>
+    <string name="about_title">GeoAgent बद्दल</string>
+    <string name="about_desc">GeoAgent मोबाइल अलर्ट हे एक अधिकृत आणीबाणी प्रतिसाद अॅप आहे जे दरडप्रवण भागांसाठी त्वरित सूचना आणि स्थलांतर मार्गदर्शन प्रदान करते.</string>
+    <string name="device_settings_title">डिव्हाइस आणि प्रणाली माहिती</string>
+    <string name="current_role_label">सक्रिय भूमिका</string>
+    
+    <!-- Role Selection -->
+    <string name="role_title">तुम्ही कोण आहात?</string>
+    <string name="role_subtitle">पुढे जाण्यासाठी तुमची भूमिका निवडा</string>
+    <string name="role_continue">पुढे जा</string>
+    <string name="role_disclaimer">ही केवळ डेमो भूमिका निवड आहे. कोणताही वैयक्तिक डेटा गोळा किंवा साठवला जात नाही.</string>
+    <string name="role_priority_title">तुमच्या भूमिकेसाठी प्राधान्यक्रम</string>
+    
+    <!-- Role Names & Descriptions -->
+    <string name="role_citizen_name">नागरिक</string>
+    <string name="role_citizen_desc">तुमच्या परिसरासाठी इशारे आणि स्थलांतर मार्गदर्शन मिळवा</string>
+    <string name="role_police_name">पोलीस</string>
+    <string name="role_police_desc">कायदा व सुव्यवस्था आणि परिसर नियंत्रणाचा समन्वय साधा</string>
+    <string name="role_rescue_name">बचाव पथक</string>
+    <string name="role_rescue_desc">बाधित भागामध्ये शोध आणि बचाव कार्य राबवा</string>
+    <string name="role_admin_name">जिल्हा प्रशासन</string>
+    <string name="role_admin_desc">जिल्हास्तरीय आपत्ती निवारण आणि साधनसामग्री वितरणावर देखरेख ठेवा</string>
+    <string name="role_emergency_name">आपत्कालीन सेवा</string>
+    <string name="role_emergency_desc">आपत्कालीन पायाभूत सुविधा आणि वैद्यकीय प्रतिसाद व्यवस्थापित करा</string>
+    
+    <!-- Role Priorities -->
+    <string name="priority_active_alerts">सक्रिय इशारे</string>
+    <string name="priority_current_risk">सध्याचा धोका</string>
+    <string name="priority_safe_places">सुरक्षित ठिकाणे</string>
+    <string name="priority_report_hazard">धोक्याची नोंद करा</string>
+    <string name="priority_affected_areas">बाधित परिसर</string>
+    <string name="priority_road_infrastructure">रस्ते / पायाभूत सुविधा धोका</string>
+    <string name="priority_response_coordination">प्रतिसाद समन्वय</string>
+    <string name="priority_high_risk_zones">गंभीर / उच्च धोका क्षेत्रे</string>
+    <string name="priority_rescue_priorities">बचाव प्राधान्यक्रम</string>
+    <string name="priority_affected_infrastructure">बाधित पायाभूत सुविधा</string>
+    <string name="priority_regional_risk">प्रादेशिक धोका आढावा</string>
+    <string name="priority_infrastructure_exposure">पायाभूत सुविधा धोका</string>
+    <string name="priority_response_status">प्रतिसाद स्थिती</string>
+    <string name="status_active_count">%1$d सक्रिय</string>
+    <string name="status_none_active">कोणतेही सक्रिय नाही</string>
+    <string name="status_available">उपलब्ध</string>
+    <string name="status_standby">स्टँडबाय</string>
+    <string name="status_normal">सामान्य</string>
+    <string name="status_warning">चेतावणी</string>
+    <string name="status_critical">गंभीर</string>
+    <string name="status_no_incidents">कोणतीही सक्रिय घटना नाही</string>
+    
+    <!-- Notification strings -->
+    <string name="notification_emergency_title">🚨 %1$s: %2$s</string>
+    <string name="notification_emergency_body">त्वरित रिकामे करा! %1$s जवळ धोका आढळला आहे. आणीबाणी इशारा उघडा.</string>
+    <string name="notification_open_alert">आणीबाणी इशारा उघडा</string>
+</resources>

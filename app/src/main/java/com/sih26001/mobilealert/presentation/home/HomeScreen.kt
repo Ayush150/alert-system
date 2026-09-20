@@ -1,6 +1,5 @@
 package com.sih26001.mobilealert.presentation.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,9 +20,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -35,22 +33,21 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sih26001.mobilealert.R
 import com.sih26001.mobilealert.core.ui.theme.AlertRed100
 import com.sih26001.mobilealert.core.ui.theme.AlertRed50
 import com.sih26001.mobilealert.core.ui.theme.AlertRed600
-import com.sih26001.mobilealert.core.ui.theme.AlertRed700
 import com.sih26001.mobilealert.core.ui.theme.AlertRed900
 import com.sih26001.mobilealert.core.ui.theme.NormalGreen100
 import com.sih26001.mobilealert.core.ui.theme.NormalGreen50
@@ -58,12 +55,13 @@ import com.sih26001.mobilealert.core.ui.theme.NormalGreen600
 import com.sih26001.mobilealert.core.ui.theme.NormalGreen700
 import com.sih26001.mobilealert.core.ui.theme.NormalGreen800
 import com.sih26001.mobilealert.core.ui.theme.SafeBlue50
+import com.sih26001.mobilealert.core.ui.theme.SafeBlue600
 import com.sih26001.mobilealert.core.ui.theme.SafeBlue700
-import com.sih26001.mobilealert.core.ui.theme.Slate50
 import com.sih26001.mobilealert.core.ui.theme.Slate100
 import com.sih26001.mobilealert.core.ui.theme.Slate200
 import com.sih26001.mobilealert.core.ui.theme.Slate300
 import com.sih26001.mobilealert.core.ui.theme.Slate400
+import com.sih26001.mobilealert.core.ui.theme.Slate50
 import com.sih26001.mobilealert.core.ui.theme.Slate500
 import com.sih26001.mobilealert.core.ui.theme.Slate600
 import com.sih26001.mobilealert.core.ui.theme.Slate700
@@ -76,9 +74,14 @@ import com.sih26001.mobilealert.core.ui.theme.WarningAmber700
 import com.sih26001.mobilealert.core.ui.theme.WarningAmber900
 import com.sih26001.mobilealert.core.util.AppLanguage
 import com.sih26001.mobilealert.core.util.LocaleManager
+import com.sih26001.mobilealert.di.DependencyContainer
 import com.sih26001.mobilealert.domain.model.Alert
 import com.sih26001.mobilealert.domain.model.AlertSeverity
 import com.sih26001.mobilealert.domain.model.AlertStatus
+import com.sih26001.mobilealert.domain.model.PriorityActionType
+import com.sih26001.mobilealert.domain.model.RoleDashboardConfig
+import com.sih26001.mobilealert.domain.model.RolePriority
+import com.sih26001.mobilealert.domain.model.UserRole
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,11 +91,19 @@ fun HomeScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToAlertDetails: (alertId: String) -> Unit,
     onNavigateToSafePlace: (alertId: String) -> Unit,
+    onNavigateToSettings: (() -> Unit)? = null,
+    onChangeRole: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val currentLang by LocaleManager.currentLanguage.collectAsState()
-    var showDemoControls by remember { mutableStateOf(false) }
+    val selectedRole = remember {
+        DependencyContainer.rolePreferences.getSelectedRole() ?: UserRole.CITIZEN
+    }
+    val roleConfig = remember(selectedRole) {
+        RoleDashboardConfig.forRole(selectedRole)
+    }
 
     Scaffold(
         topBar = {
@@ -107,36 +118,78 @@ fun HomeScreen(
                                 color = Slate900
                             )
                         )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.role_prefix, selectedRole.getLocalizedName().uppercase()),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Slate700
+                                )
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = SafeBlue50,
+                                modifier = Modifier.clickable { onChangeRole?.invoke() }
+                            ) {
+                                Text(
+                                    text = "${selectedRole.emoji} " + stringResource(id = R.string.action_change_role),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = SafeBlue700
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                         Text(
-                            text = stringResource(id = R.string.app_tagline),
+                            text = selectedRole.getLocalizedDesc(),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = Slate500,
                                 fontWeight = FontWeight.Normal
-                            )
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 },
                 actions = {
-                    // Language Switcher Chips: EN | HI | AS
+                    // Language Switcher Chips: EN | HI | MR | AS + Settings Gear
                     Row(
-                        modifier = Modifier.padding(end = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier.padding(end = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         LanguageChip(
                             label = "EN",
                             selected = currentLang == AppLanguage.ENGLISH,
-                            onClick = { LocaleManager.setLanguage(AppLanguage.ENGLISH) }
+                            onClick = { LocaleManager.setLanguage(AppLanguage.ENGLISH, context) }
                         )
                         LanguageChip(
                             label = "HI",
                             selected = currentLang == AppLanguage.HINDI,
-                            onClick = { LocaleManager.setLanguage(AppLanguage.HINDI) }
+                            onClick = { LocaleManager.setLanguage(AppLanguage.HINDI, context) }
+                        )
+                        LanguageChip(
+                            label = "MR",
+                            selected = currentLang == AppLanguage.MARATHI,
+                            onClick = { LocaleManager.setLanguage(AppLanguage.MARATHI, context) }
                         )
                         LanguageChip(
                             label = "AS",
                             selected = currentLang == AppLanguage.ASSAMESE,
-                            onClick = { LocaleManager.setLanguage(AppLanguage.ASSAMESE) }
+                            onClick = { LocaleManager.setLanguage(AppLanguage.ASSAMESE, context) }
                         )
+                        if (onNavigateToSettings != null) {
+                            IconButton(
+                                onClick = onNavigateToSettings,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Text(text = "⚙️", fontSize = 18.sp)
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -177,6 +230,14 @@ fun HomeScreen(
                     )
                 }
             }
+
+            // Compact Role Priority Section
+            RolePrioritySection(
+                config = roleConfig,
+                uiState = uiState,
+                onNavigateToAlerts = onNavigateToAlerts,
+                onNavigateToSafePlace = onNavigateToSafePlace
+            )
 
             // PRIMARY EMERGENCY CARD: NORMAL vs WARNING vs HIGH ALERT
             val primaryAlert = uiState.primaryAlert
@@ -253,79 +314,6 @@ fun HomeScreen(
                 }
             }
 
-            // Simulation / Demo Protocol Toggle (Section 17)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, Slate200, RoundedCornerShape(8.dp)),
-                colors = CardDefaults.cardColors(containerColor = Slate50),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showDemoControls = !showDemoControls },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.demo_title),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Slate600
-                            )
-                        )
-                        Text(
-                            text = if (showDemoControls) "▲" else "▼",
-                            style = MaterialTheme.typography.labelSmall.copy(color = Slate500)
-                        )
-                    }
-
-                    if (showDemoControls) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = { viewModel.triggerDemoNormal() },
-                                modifier = Modifier.weight(1f).height(40.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = NormalGreen600),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(id = R.string.demo_normal),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                                )
-                            }
-                            Button(
-                                onClick = { viewModel.triggerDemoWarning() },
-                                modifier = Modifier.weight(1f).height(40.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = WarningAmber600),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(id = R.string.demo_warning),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                                )
-                            }
-                            Button(
-                                onClick = { viewModel.triggerDemoHighAlert() },
-                                modifier = Modifier.weight(1f).height(40.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = AlertRed600),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(id = R.string.demo_high_alert),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -369,7 +357,7 @@ private fun AreaHeader(monitoredArea: String) {
                 color = Slate100
             ) {
                 Text(
-                    text = "LIVE SENSOR RADAR",
+                    text = stringResource(id = R.string.radar_sensor_label),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp,
@@ -502,11 +490,10 @@ private fun WarningStateCard(
                         color = Slate900
                     )
                 )
-                val description = if (alert.eventType.isNotBlank()) {
-                    "Unusual ground and moisture conditions have been detected near ${alert.location?.name ?: "the monitored area"}."
-                } else {
-                    stringResource(id = R.string.data_unavailable)
-                }
+                val description = stringResource(
+                    id = R.string.what_happened_desc,
+                    alert.location?.name ?: stringResource(id = R.string.default_location)
+                )
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodyMedium.copy(color = Slate800)
@@ -784,8 +771,7 @@ private fun LanguageChip(
     Surface(
         shape = RoundedCornerShape(6.dp),
         color = if (selected) Slate900 else Slate200,
-        modifier = Modifier
-            .clickable(onClick = onClick)
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
         Text(
             text = label,
@@ -793,7 +779,248 @@ private fun LanguageChip(
                 fontWeight = FontWeight.Bold,
                 color = if (selected) Color.White else Slate700
             ),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
         )
+    }
+}
+
+/**
+ * Compact "Priority for your role" section.
+ * Renders role-specific priorities in a 2x2 grid using ONLY existing data (no fabricated numbers).
+ */
+@Composable
+private fun RolePrioritySection(
+    config: RoleDashboardConfig,
+    uiState: HomeUiState,
+    onNavigateToAlerts: () -> Unit,
+    onNavigateToSafePlace: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, Slate200, RoundedCornerShape(10.dp)),
+        colors = CardDefaults.cardColors(containerColor = Slate50),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = config.role.getLocalizedName().uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            color = Slate500,
+                            letterSpacing = 0.5.sp
+                        )
+                    )
+                    Text(
+                        text = stringResource(id = R.string.role_priority_title),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Slate900
+                        )
+                    )
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(text = config.role.emoji, fontSize = 18.sp)
+                    }
+                }
+            }
+
+            // 2x2 grid of compact priority cards
+            val priorities = config.priorities
+            if (priorities.size >= 4) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PriorityCard(
+                        priority = priorities[0],
+                        uiState = uiState,
+                        onNavigateToAlerts = onNavigateToAlerts,
+                        onNavigateToSafePlace = onNavigateToSafePlace,
+                        modifier = Modifier.weight(1f)
+                    )
+                    PriorityCard(
+                        priority = priorities[1],
+                        uiState = uiState,
+                        onNavigateToAlerts = onNavigateToAlerts,
+                        onNavigateToSafePlace = onNavigateToSafePlace,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PriorityCard(
+                        priority = priorities[2],
+                        uiState = uiState,
+                        onNavigateToAlerts = onNavigateToAlerts,
+                        onNavigateToSafePlace = onNavigateToSafePlace,
+                        modifier = Modifier.weight(1f)
+                    )
+                    PriorityCard(
+                        priority = priorities[3],
+                        uiState = uiState,
+                        onNavigateToAlerts = onNavigateToAlerts,
+                        onNavigateToSafePlace = onNavigateToSafePlace,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Compact individual priority card.
+ * Adheres strictly to the NO FABRICATED DATA rule: displays only real alert counts,
+ * real severity states, or placeholder status strings.
+ */
+@Composable
+private fun PriorityCard(
+    priority: RolePriority,
+    uiState: HomeUiState,
+    onNavigateToAlerts: () -> Unit,
+    onNavigateToSafePlace: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val activeAlertId = uiState.primaryAlert?.alertId
+        ?: uiState.allActiveAlerts.firstOrNull()?.alertId
+
+    val isClickable = priority.isAvailable && when (priority.actionType) {
+        PriorityActionType.ACTIVE_ALERTS -> true
+        PriorityActionType.SAFE_PLACES -> activeAlertId != null
+        PriorityActionType.CURRENT_RISK,
+        PriorityActionType.UNAVAILABLE -> false
+    }
+
+    // Real-data status badge text mapped to string resources - STRICTLY NO FABRICATED DATA
+    val realStatusText: String = when (priority.actionType) {
+        PriorityActionType.ACTIVE_ALERTS -> {
+            if (priority.title.contains("Critical", ignoreCase = true) || priority.title.contains("High", ignoreCase = true)) {
+                val criticalOrHighCount = uiState.allActiveAlerts.count {
+                    it.severity == AlertSeverity.HIGH || it.severity == AlertSeverity.CRITICAL
+                }
+                if (criticalOrHighCount > 0) {
+                    stringResource(id = R.string.status_active_count, criticalOrHighCount)
+                } else {
+                    stringResource(id = R.string.status_none_active)
+                }
+            } else {
+                if (uiState.allActiveAlerts.isNotEmpty()) {
+                    stringResource(id = R.string.status_active_count, uiState.allActiveAlerts.size)
+                } else {
+                    stringResource(id = R.string.status_none_active)
+                }
+            }
+        }
+        PriorityActionType.SAFE_PLACES -> {
+            if (activeAlertId != null) {
+                stringResource(id = R.string.status_available)
+            } else {
+                stringResource(id = R.string.status_standby)
+            }
+        }
+        PriorityActionType.CURRENT_RISK -> {
+            when (uiState.primaryAlert?.severity) {
+                AlertSeverity.CRITICAL -> stringResource(id = R.string.status_critical)
+                AlertSeverity.HIGH -> stringResource(id = R.string.status_warning)
+                AlertSeverity.NORMAL, null -> stringResource(id = R.string.status_normal)
+            }
+        }
+        PriorityActionType.UNAVAILABLE -> {
+            priority.placeholderStatus?.let {
+                if (it.contains("incident", ignoreCase = true)) {
+                    stringResource(id = R.string.status_no_incidents)
+                } else {
+                    stringResource(id = R.string.data_unavailable)
+                }
+            } ?: stringResource(id = R.string.data_unavailable)
+        }
+    }
+
+    val cardBg = if (priority.isAvailable) Color.White else Slate100.copy(alpha = 0.6f)
+    val borderColor = if (priority.isAvailable) Slate200 else Slate200.copy(alpha = 0.5f)
+
+    Card(
+        modifier = modifier
+            .height(82.dp)
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .then(
+                if (isClickable) {
+                    Modifier.clickable {
+                        when (priority.actionType) {
+                            PriorityActionType.ACTIVE_ALERTS -> onNavigateToAlerts()
+                            PriorityActionType.SAFE_PLACES -> {
+                                activeAlertId?.let { onNavigateToSafePlace(it) }
+                            }
+                            PriorityActionType.CURRENT_RISK,
+                            PriorityActionType.UNAVAILABLE -> Unit
+                        }
+                    }
+                } else Modifier
+            ),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = priority.iconEmoji, fontSize = 16.sp)
+                if (isClickable) {
+                    Text(
+                        text = "›",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Slate400
+                        )
+                    )
+                }
+            }
+
+            Column {
+                Text(
+                    text = priority.title,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = if (priority.isAvailable) Slate800 else Slate500
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = realStatusText,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (priority.isAvailable) SafeBlue700 else Slate400
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }

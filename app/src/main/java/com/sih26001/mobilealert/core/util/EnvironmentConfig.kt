@@ -7,7 +7,7 @@ enum class Environment {
 object EnvironmentConfig {
     // Determine the current environment based on BuildConfig.DEBUG or manual override
     // For Phase 5 networking foundation, we are forcing DEBUG for local mock testing.
-    val CURRENT_ENV = Environment.DEBUG
+    val CURRENT_ENV = Environment.PRODUCTION
 
     val BASE_URL: String
         get() = when (CURRENT_ENV) {
@@ -15,7 +15,7 @@ object EnvironmentConfig {
             Environment.DEBUG -> "http://10.0.2.2:8000/"
             
             // Placeholders for staging and production backends
-            Environment.STAGING -> "https://staging.api.placeholder.com/"
-            Environment.PRODUCTION -> "https://api.placeholder.com/"
+            Environment.STAGING -> "https://geoagent.campuscrafters.com/"
+            Environment.PRODUCTION -> "https://geoagent.campuscrafters.com/"
         }
 }

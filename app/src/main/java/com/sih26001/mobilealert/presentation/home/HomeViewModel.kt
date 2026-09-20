@@ -2,7 +2,7 @@ package com.sih26001.mobilealert.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sih26001.mobilealert.data.local.toEntity
+import com.sih26001.mobilealert.core.alarm.AlarmController
 import com.sih26001.mobilealert.di.DependencyContainer
 import com.sih26001.mobilealert.domain.model.Alert
 import com.sih26001.mobilealert.domain.model.AlertSeverity
@@ -11,11 +11,9 @@ import com.sih26001.mobilealert.domain.model.Location
 import com.sih26001.mobilealert.domain.repository.AlertRepository
 import com.sih26001.mobilealert.domain.usecase.AcknowledgeAlertUseCase
 import com.sih26001.mobilealert.domain.usecase.GetActiveAlertsUseCase
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -38,7 +36,8 @@ data class HomeUiState(
 class HomeViewModel(
     private val alertRepository: AlertRepository = DependencyContainer.alertRepository,
     private val acknowledgeAlertUseCase: AcknowledgeAlertUseCase = DependencyContainer.acknowledgeAlertUseCase,
-    getActiveAlertsUseCase: GetActiveAlertsUseCase = GetActiveAlertsUseCase(alertRepository)
+    getActiveAlertsUseCase: GetActiveAlertsUseCase = GetActiveAlertsUseCase(alertRepository),
+    private val alarmController: AlarmController = DependencyContainer.alarmController
 ) : ViewModel() {
 
     private val _isRefreshing = MutableStateFlow(false)
@@ -49,13 +48,22 @@ class HomeViewModel(
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
         .withZone(ZoneId.systemDefault())
 
+    private data class UiMetadata(
+        val refreshing: Boolean,
+        val offline: Boolean,
+        val lastUpdated: Instant?,
+        val ackMessage: String?
+    )
+
+    private val uiMetadataFlow = combine(_isRefreshing, _isOffline, _lastUpdated, _ackMessage) { refreshing, offline, updated, ackMsg ->
+        UiMetadata(refreshing, offline, updated, ackMsg)
+    }
+
     val uiState: StateFlow<HomeUiState> = combine(
         getActiveAlertsUseCase(),
         alertRepository.observePendingAckIds(),
-        _isRefreshing,
-        _isOffline,
-        _lastUpdated
-    ) { activeAlerts: List<Alert>, pendingAcks: Set<String>, refreshing: Boolean, offline: Boolean, updatedInstant: Instant? ->
+        uiMetadataFlow
+    ) { activeAlerts, pendingAcks, metadata ->
         // Sort active alerts: CRITICAL first, then HIGH, then NORMAL
         val sortedAlerts = activeAlerts.sortedWith(
             compareByDescending<Alert> { alert ->
@@ -69,17 +77,17 @@ class HomeViewModel(
 
         val primary = sortedAlerts.firstOrNull()
         val area = primary?.location?.name?.takeIf { it.isNotBlank() } ?: "Shillong"
-        val updatedText = updatedInstant?.let { timeFormatter.format(it) }
+        val updatedText = metadata.lastUpdated?.let { timeFormatter.format(it) }
 
         HomeUiState(
-            isLoading = refreshing,
+            isLoading = metadata.refreshing,
             primaryAlert = primary,
             allActiveAlerts = sortedAlerts,
-            isOffline = offline,
+            isOffline = metadata.offline,
             lastUpdatedText = updatedText,
             monitoredArea = area,
             pendingAckIds = pendingAcks,
-            ackMessage = _ackMessage.value
+            ackMessage = metadata.ackMessage
         )
     }.stateIn(
         scope = viewModelScope,
@@ -106,12 +114,14 @@ class HomeViewModel(
     }
 
     fun silenceAlert(alertId: String) {
+        alarmController.silenceAlarm(alertId)
         viewModelScope.launch {
             alertRepository.silenceAlert(alertId)
         }
     }
 
     fun acknowledgeAlert(alertId: String) {
+        alarmController.silenceAlarm(alertId)
         viewModelScope.launch {
             val result = acknowledgeAlertUseCase(alertId)
             result.onFailure { error ->
@@ -120,72 +130,7 @@ class HomeViewModel(
         }
     }
 
-    // --- Demo Protocol Simulations (Section 17) ---
-
-    fun triggerDemoWarning() {
-        viewModelScope.launch {
-            val warningAlert = Alert(
-                alertId = "ALT-DEMO-WARN",
-                eventType = "LANDSLIDE_RISK",
-                severity = AlertSeverity.HIGH,
-                riskScore = 0.72,
-                location = Location("Shillong", 25.5788, 91.8933),
-                issuedAt = Instant.now(),
-                expiresAt = Instant.now().plusSeconds(7200),
-                topDrivers = listOf(
-                    "Heavy rainfall",
-                    "High soil moisture",
-                    "Increased ground movement"
-                ),
-                recommendedAction = "Stay away from steep slopes and avoid travelling toward the affected area.",
-                affectedAssets = listOf(
-                    com.sih26001.mobilealert.domain.model.AffectedAsset("road", "GS Road Sector 4")
-                ),
-                source = "sih26001_demo",
-                dataQuality = "GOOD",
-                requiresAck = false,
-                status = AlertStatus.ACTIVE
-            )
-            DependencyContainer.database.alertDao().insertAlert(warningAlert.toEntity())
-            _lastUpdated.value = Instant.now()
-        }
-    }
-
-    fun triggerDemoHighAlert() {
-        viewModelScope.launch {
-            val highAlert = Alert(
-                alertId = "ALT-DEMO-CRIT",
-                eventType = "LANDSLIDE_DANGER",
-                severity = AlertSeverity.CRITICAL,
-                riskScore = 0.94,
-                location = Location("Shillong", 25.5788, 91.8933),
-                issuedAt = Instant.now(),
-                expiresAt = Instant.now().plusSeconds(3600),
-                topDrivers = listOf(
-                    "Extreme slope displacement detected",
-                    "Pore water pressure threshold exceeded",
-                    "Severe continuous precipitation"
-                ),
-                recommendedAction = "Move away from the affected area and go to a safe location.",
-                affectedAssets = listOf(
-                    com.sih26001.mobilealert.domain.model.AffectedAsset("road", "NH-13 Shillong Bypass"),
-                    com.sih26001.mobilealert.domain.model.AffectedAsset("settlement", "Laitumkhrah Ward 3"),
-                    com.sih26001.mobilealert.domain.model.AffectedAsset("shelter", "Shillong Civil Defense Relief Center")
-                ),
-                source = "sih26001_demo",
-                dataQuality = "GOOD",
-                requiresAck = true,
-                status = AlertStatus.ACTIVE
-            )
-            DependencyContainer.database.alertDao().insertAlert(highAlert.toEntity())
-            _lastUpdated.value = Instant.now()
-        }
-    }
-
-    fun triggerDemoNormal() {
-        viewModelScope.launch {
-            DependencyContainer.database.alertDao().deleteAllAlerts()
-            _lastUpdated.value = Instant.now()
-        }
+    fun clearAckMessage() {
+        _ackMessage.value = null
     }
 }

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">सिक्स्थ सेंस</string>
+    <string name="app_name">GeoAgent</string>
     <string name="app_tagline">जमीन खिसकने से पहले जोखिम को पहचानें।</string>
     
     <!-- Navigation -->
@@ -14,19 +14,38 @@
     <string name="label_current_area">आपका क्षेत्र</string>
     <string name="status_normal_title">कोई सक्रिय चेतावनी नहीं</string>
     <string name="status_normal_subtitle">आपका क्षेत्र वर्तमान में सुरक्षित है।</string>
+    <string name="radar_sensor_label">लाइव सेंसर रडार</string>
     
     <!-- Two-Phase Alert System -->
     <string name="alert_warning_title">चेतावनी</string>
     <string name="alert_warning_subtitle">आस-पास भूस्खलन का जोखिम देखा गया है</string>
     <string name="alert_high_title">हाई अलर्ट</string>
     <string name="alert_high_subtitle">आस-पास भूस्खलन का गंभीर खतरा</string>
+    <string name="alert_critical_title">गंभीर आपातकालीन अलर्ट</string>
+    <string name="alert_critical_subtitle">आस-पास तत्काल भूस्खलन का आपातकाल</string>
+    
+    <!-- Emergency Full-Screen UI -->
+    <string name="hazard_landslide_detected">भूस्खलन का गंभीर खतरा दर्ज किया गया</string>
+    <string name="hazard_detected_near">%1$s के पास खतरा पाया गया है।</string>
+    <string name="hazard_move_away_desc">चिह्नित जोखिम क्षेत्र से तुरंत दूर हटें।</string>
+    <string name="label_safe_place">सुरक्षित स्थान</string>
+    <string name="label_demo_destination">डेमो गंतव्य (सिमुलेशन)</string>
+    <string name="action_view_safe_route">सुरक्षित मार्ग देखें</string>
+    <string name="siren_active">सायरन सक्रिय</string>
+    <string name="siren_silenced">सायरन बंद किया गया</string>
+    <string name="action_silence_siren">सायरन बंद करें</string>
+    <string name="action_im_safe_ack">मैं सुरक्षित हूँ / स्वीकार करें</string>
+    <string name="action_siren_silenced_status">सायरन स्थानीय रूप से बंद किया गया। अलर्ट सक्रिय रहेगा।</string>
     
     <!-- 5 Core Questions -->
     <string name="question_what_happened">क्या हुआ?</string>
     <string name="question_why">क्यों हुआ?</string>
+    <string name="question_where">कहाँ?</string>
     <string name="question_what_to_do">आपको क्या करना चाहिए?</string>
     <string name="question_where_to_go">कहाँ जाना चाहिए?</string>
     <string name="question_how_to_get_there">वहाँ कैसे पहुँचें?</string>
+    <string name="nearest_safe_location_desc">निकटतम प्रमाणित सुरक्षित स्थान या निर्धारित राहत केंद्र।</string>
+    <string name="what_happened_desc">%1$s के पास जमीन और मिट्टी की असामान्य स्थिति दर्ज की गई है।</string>
     
     <!-- Default instructions -->
     <string name="warning_instruction_default">खड़ी ढलानों से दूर रहें और प्रभावित क्षेत्र की ओर यात्रा करने से बचें।</string>
@@ -42,6 +61,8 @@
     <string name="action_acknowledging">स्वीकार किया जा रहा है…</string>
     <string name="action_acknowledged">सफलतापूर्वक स्वीकार किया गया</string>
     <string name="action_view_details">अलर्ट विवरण देखें</string>
+    <string name="action_change_role">बदलें</string>
+    <string name="role_prefix">भूमिका: %1$s</string>
     
     <!-- Safe Place Screen -->
     <string name="safe_place_title">निकटतम सुरक्षित स्थान</string>
@@ -62,6 +83,7 @@
     <string name="last_updated_prefix">अंतिम अपडेट: %1$s</string>
     <string name="silence_notice">अलार्म स्थानीय रूप से बंद कर दिया गया है। परिचालन स्वीकृति आवश्यक है।</string>
     <string name="sync_pending_notice">स्वीकृति स्थानीय रूप से दर्ज की गई है। नेटवर्क मिलने पर सर्वर से सिंक होगी।</string>
+    <string name="operational_controls">परिचालन नियंत्रण</string>
     
     <!-- History & Lists -->
     <string name="history_title">अलर्ट इतिहास</string>
@@ -70,20 +92,68 @@
     <string name="alerts_title">सक्रिय अलर्ट</string>
     <string name="alerts_empty_title">कोई सक्रिय अलर्ट नहीं</string>
     <string name="alerts_empty_subtitle">आपके क्षेत्र के लिए कोई सक्रिय भूस्खलन चेतावनी जारी नहीं की गई है।</string>
+    <string name="monitored_zone_default">निगरानी क्षेत्र</string>
+    <string name="status_acknowledged">स्वीकृत</string>
+    <string name="status_expired">समाप्त</string>
+    <string name="status_silenced">मूक (Silenced)</string>
     
     <!-- Settings & Languages -->
     <string name="settings_title">सेटिंग्स</string>
     <string name="language_title">भाषा</string>
+    <string name="settings_language_desc">एप्लिकेशन प्रदर्शन भाषा चुनें</string>
     <string name="lang_en">English</string>
-    <string name="lang_hi">हिंदी (Hindi)</string>
+    <string name="lang_hi">हिन्दी (Hindi)</string>
+    <string name="lang_mr">मराठी (Marathi)</string>
     <string name="lang_as">অসমীয়া (Assamese)</string>
-    <string name="about_title">सिक्स्थ सेंस के बारे में</string>
-    <string name="about_desc">सिक्स्थ सेंस मोबाइल अलर्ट एक आधिकारिक आपातकालीन प्रतिक्रिया ऐप है जो भूस्खलन के उच्च जोखिम वाले क्षेत्रों के लिए त्वरित चेतावनी और निकासी मार्गदर्शन प्रदान करता है।</string>
+    <string name="about_title">GeoAgent के बारे में</string>
+    <string name="about_desc">GeoAgent मोबाइल अलर्ट एक आधिकारिक आपातकालीन प्रतिक्रिया ऐप है जो भूस्खलन के उच्च जोखिम वाले क्षेत्रों के लिए त्वरित चेतावनी और निकासी मार्गदर्शन प्रदान करता है।</string>
+    <string name="device_settings_title">डिवाइस और सिस्टम जानकारी</string>
+    <string name="current_role_label">सक्रिय भूमिका</string>
     
-    <!-- Simulation / Demo Protocol -->
-    <string name="demo_title">सिमुलेशन / डेमो प्रोटोकॉल</string>
-    <string name="demo_normal">सामान्य</string>
-    <string name="demo_warning">चेतावनी</string>
-    <string name="demo_high_alert">हाई अलर्ट</string>
-    <string name="demo_clear">साफ़ करें</string>
+    <!-- Role Selection -->
+    <string name="role_title">आप कौन हैं?</string>
+    <string name="role_subtitle">जारी रखने के लिए अपनी भूमिका चुनें</string>
+    <string name="role_continue">जारी रखें</string>
+    <string name="role_disclaimer">यह एक डेमो भूमिका चयन है। कोई व्यक्तिगत डेटा एकत्र या संग्रहीत नहीं किया जाता।</string>
+    <string name="role_priority_title">आपकी भूमिका के लिए प्राथमिकता</string>
+    
+    <!-- Role Names & Descriptions -->
+    <string name="role_citizen_name">नागरिक</string>
+    <string name="role_citizen_desc">अपने क्षेत्र के लिए अलर्ट और निकासी मार्गदर्शन प्राप्त करें</string>
+    <string name="role_police_name">पुलिस</string>
+    <string name="role_police_desc">कानून व्यवस्था प्रतिक्रिया और क्षेत्र नियंत्रण का समन्वय करें</string>
+    <string name="role_rescue_name">बचाव दल</string>
+    <string name="role_rescue_desc">प्रभावित क्षेत्रों में खोज और बचाव अभियान तैनात करें</string>
+    <string name="role_admin_name">जिला प्रशासन</string>
+    <string name="role_admin_desc">जिला स्तरीय आपदा प्रतिक्रिया और संसाधन आवंटन की निगरानी करें</string>
+    <string name="role_emergency_name">आपातकालीन सेवाएं</string>
+    <string name="role_emergency_desc">आपातकालीन बुनियादी ढांचे और चिकित्सा प्रतिक्रिया का प्रबंधन करें</string>
+    
+    <!-- Role Priorities -->
+    <string name="priority_active_alerts">सक्रिय अलर्ट</string>
+    <string name="priority_current_risk">वर्तमान जोखिम</string>
+    <string name="priority_safe_places">सुरक्षित स्थान</string>
+    <string name="priority_report_hazard">खतरे की रिपोर्ट करें</string>
+    <string name="priority_affected_areas">प्रभावित क्षेत्र</string>
+    <string name="priority_road_infrastructure">सड़क / बुनियादी ढांचा जोखिम</string>
+    <string name="priority_response_coordination">प्रतिक्रिया समन्वय</string>
+    <string name="priority_high_risk_zones">गंभीर / उच्च जोखिम क्षेत्र</string>
+    <string name="priority_rescue_priorities">बचाव प्राथमिकताएं</string>
+    <string name="priority_affected_infrastructure">प्रभावित बुनियादी ढांचा</string>
+    <string name="priority_regional_risk">क्षेत्रीय जोखिम अवलोकन</string>
+    <string name="priority_infrastructure_exposure">बुनियादी ढांचा जोखिम</string>
+    <string name="priority_response_status">प्रतिक्रिया स्थिति</string>
+    <string name="status_active_count">%1$d सक्रिय</string>
+    <string name="status_none_active">कोई सक्रिय नहीं</string>
+    <string name="status_available">उपलब्ध</string>
+    <string name="status_standby">स्टैंडबाय</string>
+    <string name="status_normal">सामान्य</string>
+    <string name="status_warning">चेतावनी</string>
+    <string name="status_critical">गंभीर</string>
+    <string name="status_no_incidents">कोई सक्रिय घटना नहीं</string>
+    
+    <!-- Notification strings -->
+    <string name="notification_emergency_title">🚨 %1$s: %2$s</string>
+    <string name="notification_emergency_body">तुरंत खाली करें! %1$s के पास खतरा देखा गया। आपातकालीन अलर्ट खोलें।</string>
+    <string name="notification_open_alert">आपातकालीन अलर्ट खोलें</string>
 </resources>

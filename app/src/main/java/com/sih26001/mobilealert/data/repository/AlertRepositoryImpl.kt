@@ -93,24 +93,31 @@ class AlertRepositoryImpl(
             AlertStatus.ACKNOWLEDGED
         }
 
+        val isDemo = alertEntity.source?.equals("sih26001_demo", ignoreCase = true) == true ||
+                     alertEntity.source?.contains("demo", ignoreCase = true) == true ||
+                     trimmedId.startsWith("ALT-DEMO-", ignoreCase = true) ||
+                     trimmedId.startsWith("DEMO-", ignoreCase = true)
+
         // Room transaction ensures AlertEntity status update and PendingAckEntity insertion are atomic
         try {
             transactionRunner {
                 alertDao.updateStatus(trimmedId, newStatus)
                 alertDao.updateAcknowledgedAt(trimmedId, now)
 
-                // Enqueue into Room offline queue for future authoritative backend synchronization
-                val pendingAck = PendingAckEntity(
-                    alertId = trimmedId,
-                    acknowledgedAt = now,
-                    retryCount = 0,
-                    lastAttemptAt = null,
-                    status = AckSyncStatus.PENDING
-                )
-                val rowId = pendingAckDao.insertOrIgnore(pendingAck)
-                if (rowId != -1L) {
-                    eventLogger?.recordCreated(trimmedId)
-                    eventLogger?.recordQueued(trimmedId)
+                // Enqueue into Room offline queue ONLY for real cloud alerts; NEVER for demo alerts
+                if (!isDemo) {
+                    val pendingAck = PendingAckEntity(
+                        alertId = trimmedId,
+                        acknowledgedAt = now,
+                        retryCount = 0,
+                        lastAttemptAt = null,
+                        status = AckSyncStatus.PENDING
+                    )
+                    val rowId = pendingAckDao.insertOrIgnore(pendingAck)
+                    if (rowId != -1L) {
+                        eventLogger?.recordCreated(trimmedId)
+                        eventLogger?.recordQueued(trimmedId)
+                    }
                 }
             }
             Result.success(Unit)
@@ -140,7 +147,26 @@ class AlertRepositoryImpl(
             alertDao.updateStatus(trimmedId, AlertStatus.SILENCED)
         }
 
-        Result.success(Unit)
+        val isDemo = alertEntity.source?.equals("sih26001_demo", ignoreCase = true) == true ||
+                     alertEntity.source?.contains("demo", ignoreCase = true) == true ||
+                     trimmedId.startsWith("ALT-DEMO-", ignoreCase = true) ||
+                     trimmedId.startsWith("DEMO-", ignoreCase = true)
+
+        // For demo alerts, silence is strictly local; NEVER call remote backend!
+        if (isDemo) {
+            return@withContext Result.success(Unit)
+        }
+
+        // Wire remote SILENCE to backend: POST /api/v1/alerts/silence
+        return@withContext try {
+            apiService.silenceAlarm()
+            Result.success(Unit)
+        } catch (cancellation: kotlinx.coroutines.CancellationException) {
+            throw cancellation
+        } catch (e: Exception) {
+            android.util.Log.w("AlertRepositoryImpl", "Remote silence call failed: ${e.message}")
+            Result.failure(e)
+        }
     }
 
     override suspend fun refreshAlerts(): Result<Unit> {
@@ -171,9 +197,17 @@ class AlertRepositoryImpl(
 
     override suspend fun refreshAlert(alertId: String): Result<Alert> {
         return try {
-            val dtos = apiService.getAlerts()
-            val matchingDto = dtos.find { it.alert_id == alertId }
-                ?: return Result.failure(NoSuchElementException("Alert $alertId not found in remote alerts"))
+            val matchingDto = try {
+                apiService.getAlertById(alertId)
+            } catch (e: retrofit2.HttpException) {
+                if (e.code() == 404 || e.code() == 405 || e.code() == 501) {
+                    val dtos = apiService.getActiveAlerts().ifEmpty { apiService.getAlerts() }
+                    dtos.find { it.alert_id == alertId }
+                        ?: return Result.failure(NoSuchElementException("Alert $alertId not found in remote alerts"))
+                } else {
+                    throw e
+                }
+            }
 
             val validationResult = AlertValidator.validate(matchingDto)
             if (validationResult is AlertValidator.Result.Invalid) {

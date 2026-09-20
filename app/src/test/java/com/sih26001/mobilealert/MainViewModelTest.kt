@@ -4,7 +4,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.sih26001.mobilealert.core.alarm.AlarmController
 import com.sih26001.mobilealert.core.notification.AlertNotificationManager
 import com.sih26001.mobilealert.data.mock.MockAlertData
-import com.sih26001.mobilealert.di.DependencyContainer
+import com.sih26001.mobilealert.data.repository.MockAlertRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -17,8 +17,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
-import org.mockito.Mockito.verifyNoMoreInteractions
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
@@ -31,16 +31,20 @@ class MainViewModelTest {
     private lateinit var notificationManager: AlertNotificationManager
     private lateinit var alarmController: AlarmController
     private lateinit var mainViewModel: MainViewModel
-    private lateinit var mockAlertRepository: com.sih26001.mobilealert.data.repository.MockAlertRepository
+    private lateinit var mockAlertRepository: MockAlertRepository
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         notificationManager = mock(AlertNotificationManager::class.java)
         alarmController = mock(AlarmController::class.java)
-        mockAlertRepository = com.sih26001.mobilealert.data.repository.MockAlertRepository()
+        mockAlertRepository = MockAlertRepository()
         
-        mainViewModel = MainViewModel(notificationManager, alarmController, mockAlertRepository)
+        mainViewModel = MainViewModel(
+            notificationManager = notificationManager,
+            alarmController = alarmController,
+            alertRepository = mockAlertRepository
+        )
     }
 
     @After
@@ -49,48 +53,62 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `new critical alert triggers notification and alarm`() = runTest {
-        val alert = MockAlertData.criticalAlert
-        
-        mockAlertRepository.triggerTestAlert(alert)
+    fun `app startup does NOT trigger notification or physical alarm`() = runTest {
         advanceUntilIdle()
 
-        verify(notificationManager).showAlertNotification(alert)
-        verify(alarmController).startAlarm(alert)
+        verify(notificationManager, never()).showAlertNotification(mockAlertRepository.triggerTestAlert(MockAlertData.criticalAlert).let { MockAlertData.criticalAlert })
+        verify(alarmController, never()).startAlarm(any())
     }
 
     @Test
-    fun `silencing an alert stops alarm but not notification`() = runTest {
+    fun `alerts already in Room or emitted do NOT trigger alarm in MainViewModel`() = runTest {
+        val cloudAlert = MockAlertData.criticalAlert
+        mockAlertRepository.triggerTestAlert(cloudAlert)
+        advanceUntilIdle()
+
+        // MainViewModel does not trigger hardware alarm or notification for database emissions;
+        // notifications and alarms are handled strictly by FCM pipeline (FcmAlertTriggerHandler)
+        verify(alarmController, never()).startAlarm(cloudAlert)
+        verify(notificationManager, never()).showAlertNotification(cloudAlert)
+    }
+
+    @Test
+    fun `silencing an alert stops active alarm`() = runTest {
         val alert = MockAlertData.criticalAlert
-        
         mockAlertRepository.triggerTestAlert(alert)
         advanceUntilIdle()
-        
-        // Silence it
+
         mockAlertRepository.silenceAlert(alert.alertId)
         advanceUntilIdle()
 
-        // It was triggered
-        verify(notificationManager).showAlertNotification(alert)
-        verify(alarmController).startAlarm(alert)
-        
-        // It was silenced
         verify(alarmController).silenceAlarm(alert.alertId)
+        verify(notificationManager, never()).cancelAlertNotification(alert.alertId)
     }
 
     @Test
-    fun `acknowledging an alert stops alarm and notification`() = runTest {
+    fun `acknowledging an alert stops alarm and cancels notification`() = runTest {
         val alert = MockAlertData.criticalAlert
-        
         mockAlertRepository.triggerTestAlert(alert)
         advanceUntilIdle()
-        
-        // Acknowledge it
+
         mockAlertRepository.acknowledgeAlert(alert.alertId)
         advanceUntilIdle()
 
-        // It was removed from active alerts flow so it cancels notification
-        verify(notificationManager).cancelAlertNotification(alert.alertId)
         verify(alarmController).silenceAlarm(alert.alertId)
+        verify(notificationManager).cancelAlertNotification(alert.alertId)
     }
+
+    @Test
+    fun `clearing viewmodel stops alarm`() {
+        // Test onCleared via test reflection or calling stopAlarm
+        val localVm = MainViewModel(notificationManager, alarmController, mockAlertRepository)
+        // Simulate clearance through reflection or public method
+        val onClearedMethod = MainViewModel::class.java.getDeclaredMethod("onCleared")
+        onClearedMethod.isAccessible = true
+        onClearedMethod.invoke(localVm)
+
+        verify(alarmController).stopAlarm()
+    }
+
+    private fun any(): com.sih26001.mobilealert.domain.model.Alert = org.mockito.kotlin.any()
 }
